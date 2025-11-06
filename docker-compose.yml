@@ -4,7 +4,7 @@ services:
   database:
     image: "postgres:latest"
     ports:
-      - "1111:1111"
+      - "1111:5432"
     environment:
       POSTGRES_USER: "metro-user"
       POSTGRES_PASSWORD: "its_terrible"

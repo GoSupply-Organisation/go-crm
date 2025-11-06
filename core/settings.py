@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,20 +68,18 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'core.wsgi.application'
-from decouple import config
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),   # 'db' from docker-compose
-        'PORT': config('DB_PORT'),
+        'NAME': '458speciale',
+        'USER': 'metro-user',
+        'PASSWORD': 'its_terrible',
+        'HOST': 'localhost',   # ← CHANGE THIS! Host is your machine
+        'PORT': '1111',        # ← CHANGE THIS! Use the HOST port you exposed
     }
 }
 
