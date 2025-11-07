@@ -15,7 +15,7 @@ def adding_contact(request):
         form = ContactForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('index')
+            return redirect('')
     else:
         form = ContactForm()
     return render(request, 'adding_contact.html', {'form': form})
