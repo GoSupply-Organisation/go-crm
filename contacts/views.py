@@ -19,10 +19,10 @@ def contact_list(request):
 def contact_create(request):
     if request.method == "POST":
         contact = Contact(
-        first_name = request.POST.get['first_name'],
-        last_name = request.POST.get['last_name'],
-        email = request.POST.get['email'],
-        phone = request.POST.get['phone'])
+        first_name = request.POST.get('first_name'),  # ✅ USE PARENTHESES
+        last_name = request.POST.get('last_name'),
+        email = request.POST.get('email'),
+        phone = request.POST.get('phone'))
         contact.save
         return redirect('contact_list')
     return render(request, 'contacts/contact_create.html')
