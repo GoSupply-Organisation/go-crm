@@ -1,15 +1,28 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <title>Contact List</title>
 </head>
 <body>
-    <h1>Contact List</h1>
-    <ul>
-        {% for contact in contacts %}
-        <li>{{ contact.name }} - {{ contact.email }}</li>
-        {% endfor %}
-    </ul>
+    <h1>Contacts</h1>
+
+    {% if contacts %}
+        <ul>
+            {% for contact in contacts %}
+                <li>
+                    <strong>Name:</strong> {{ contact.name }}<br>
+                    <strong>Email:</strong> {{ contact.email }}<br>
+                    <strong>Phone:</strong> {{ contact.phone|default:"Not provided" }}<br>
+                    <strong>Address:</strong> {{ contact.address|default:"Not provided" }}<br>
+                    <small>Added on: {{ contact.created_at|date:"M d, Y" }}</small>
+                    <hr>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No contacts found.</p>
+    {% endif %}
     <a href="{% url 'adding_contact' %}">Add New Contact</a>
 </body>
 </html>

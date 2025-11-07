@@ -7,3 +7,5 @@ class Contact(models.Model):
     last_name = models.CharField(max_length=30)
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    rating = models.IntegerField(null=True, blank=True)
