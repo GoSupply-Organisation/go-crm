@@ -116,6 +116,24 @@
         .edit-btn:hover, .delete-btn:hover {
             opacity: 0.8;
         }
+
+        .enquire-btn {
+            padding: 6px 12px;
+            margin-right: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            background: #ffc107;
+            color: black;
+            display: inline-block;
+        }
+
+        .enquire-btn:hover {
+            background: #e0a800;
+            opacity: 0.8;
+        }
         .contact-actions {
             position: absolute;
             top: 15px;
@@ -148,7 +166,9 @@
                         <div class="contact-item" id="contact-{{ contact.id }}">
                             <div class="contact-actions">
                                 <!-- Add More Info Button Here -->
+                                 
                                 <a href="{% url 'inquire_contact' contact.id %}" class="info-btn">More Info</a>
+                                <a href="{% url 'enquire_contact' contact.id %}" class="enquire-btn">Enquire</a>
                                 <a href="{% url 'update_contact' contact.id %}" class="edit-btn">Edit</a>
                                 <button class="delete-btn" 
                                         data-contact-id="{{ contact.id }}" 
@@ -156,6 +176,7 @@
                                     Delete
                                 </button>
                             </div>
+
                             
                             <div class="contact-field">
                                 <strong>Name:</strong> {{ contact.Full_name }}

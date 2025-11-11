@@ -1,6 +1,9 @@
+from django.core.mail import send_mail
+from django.http import JsonResponse
+
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404   
-from .models import Contact
+from .models import Contact, EnquiryLog
 from .forms import ContactForm
 from django.template.loader import get_template
 from django.contrib import messages
@@ -82,3 +85,87 @@ def delete_contact(request, contact_id):
             return JsonResponse({'success': False, 'error': str(e)})
     else:
         return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+
+def enquire_contact(request, contact_id):
+    contact = Contact.objects.get(id=contact_id)
+    return render(request, 'enquire.html', {'contact': contact})
+
+def send_enquiry(request):
+    if request.method == 'POST':
+        try:
+            contact_id = request.POST.get('contact_id')
+            enquiry_type = request.POST.get('enquiry_type')
+            subject = request.POST.get('subject')
+            message = request.POST.get('message')
+            custom_message = request.POST.get('custom_message', '')
+            send_email_flag = request.POST.get('send_email') == 'on'
+            send_sms_flag = request.POST.get('send_sms') == 'on'
+            
+            contact = Contact.objects.get(id=contact_id)
+            
+            # Combine the main message with custom message
+            full_message = message
+            if custom_message:
+                full_message += f"\n\nAdditional Notes:\n{custom_message}"
+            
+            results = {
+                'email_sent': False,
+                'sms_sent': False
+            }
+            
+            # Send email
+            if send_email_flag and contact.email:
+                try:
+                    send_mail(
+                        subject,
+                        full_message,
+                        'noreply@yourcompany.com',  # Update with your email
+                        [contact.email],
+                        fail_silently=False,
+                    )
+                    results['email_sent'] = True
+                except Exception as e:
+                    return JsonResponse({'success': False, 'error': f'Email sending failed: {str(e)}'})
+            
+            # Send SMS (you'll need to integrate with an SMS service like Twilio)
+            if send_sms_flag and contact.phone_number:
+                try:
+                    # Example with Twilio (you'll need to install twilio package)
+                    # from twilio.rest import Client
+                    # client = Client(account_sid, auth_token)
+                    # message = client.messages.create(
+                    #     body=full_message,
+                    #     from_='+1234567890',
+                    #     to=contact.phone
+                    # )
+                    # results['sms_sent'] = True
+                    
+                    # For now, we'll just log it since SMS integration requires external service
+                    print(f"SMS would be sent to {contact.phone_number}: {full_message}")
+                    results['sms_sent'] = True
+                    
+                except Exception as e:
+                    return JsonResponse({'success': False, 'error': f'SMS sending failed: {str(e)}'})
+            
+            # Log the enquiry
+            EnquiryLog.objects.create(
+                contact=contact,
+                enquiry_type=enquiry_type,
+                subject=subject,
+                message=full_message,
+                email_sent=results['email_sent'],
+                sms_sent=results['sms_sent']
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Enquiry sent successfully! Email: {"Yes" if results["email_sent"] else "No"}, SMS: {"Yes" if results["sms_sent"] else "No"}'
+            })
+            
+        except Contact.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Contact not found'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

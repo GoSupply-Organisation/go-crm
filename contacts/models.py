@@ -26,3 +26,26 @@ class Contact(models.Model):
     notes = models.CharField(max_length=500, blank=True)
     address = models.CharField(max_length=200, blank=True)
     company = models.CharField(max_length=100, blank=True)
+
+
+
+class EnquiryLog(models.Model):
+    ENQUIRY_TYPES = [
+        ('product_info', 'Product Information'),
+        ('pricing', 'Pricing Inquiry'),
+        ('demo', 'Request Demo'),
+        ('support', 'Technical Support'),
+        ('partnership', 'Partnership Opportunity'),
+        ('custom', 'Custom Message'),
+    ]
+    
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
+    enquiry_type = models.CharField(max_length=20, choices=ENQUIRY_TYPES)
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    email_sent = models.BooleanField(default=False)
+    sms_sent = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Enquiry for {self.contact.Full_name} - {self.get_enquiry_type_display()}"
