@@ -23,3 +23,4 @@ class Contact(models.Model):
         blank=True,
         null=True,
     )
+    notes = models.CharField(max_length=500, blank=True)

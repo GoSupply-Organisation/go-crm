@@ -60,34 +60,26 @@
             <span>{{ contact.lead_class }}</span>
         </div>
         
-        <!-- Add more fields as needed -->
-        {% if contact.phone %}
         <div class="contact-detail">
             <label>Phone:</label>
-            <span>{{ contact.phone }}</span>
+            <span>{{ contact.phone_number }}</span>
         </div>
-        {% endif %}
-        
-        {% if contact.address %}
+
         <div class="contact-detail">
             <label>Address:</label>
             <span>{{ contact.address }}</span>
         </div>
-        {% endif %}
-        
-        {% if contact.company %}
+
         <div class="contact-detail">
             <label>Company:</label>
             <span>{{ contact.company }}</span>
         </div>
-        {% endif %}
-        
-        {% if contact.notes %}
+
         <div class="contact-detail">
             <label>Notes:</label>
             <span>{{ contact.notes }}</span>
         </div>
-        {% endif %}
+
         
 
     </div>

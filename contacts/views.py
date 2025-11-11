@@ -13,10 +13,6 @@ def index_func(request):
     contacts = Contact.objects.all()
     return render(request, 'index.html', {'contacts': contacts})
 
-# def inquire(request, contact_id):
-#     contacts = get_object_or_404(Contact, pk=contact_id)
-#     return render(request, 'more_contact_info.html', {'contacts': contacts})
-
 def inquire(request, contact_id):
     contact = get_object_or_404(Contact, pk=contact_id)
     if contact:
