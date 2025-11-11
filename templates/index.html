@@ -70,6 +70,23 @@
         .add-btn:hover {
             background: #0056b3;
         }
+        .info-btn {
+            padding: 6px 12px;
+            margin-right: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            background: #17a2b8;
+            color: white;
+            display: inline-block;
+        }
+
+        .info-btn:hover {
+            background: #138496;
+            opacity: 0.8;
+        }
         .no-records {
             color: #6c757d;
             font-style: italic;
@@ -130,6 +147,8 @@
                     {% for contact in contacts %}
                         <div class="contact-item" id="contact-{{ contact.id }}">
                             <div class="contact-actions">
+                                <!-- Add More Info Button Here -->
+                                <a href="{% url 'inquire_contact' contact.id %}" class="info-btn">More Info</a>
                                 <a href="{% url 'update_contact' contact.id %}" class="edit-btn">Edit</a>
                                 <button class="delete-btn" 
                                         data-contact-id="{{ contact.id }}" 

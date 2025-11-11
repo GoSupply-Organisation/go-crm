@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>More Info - {{ contact.Full_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .contact-detail {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .contact-detail label {
+            font-weight: bold;
+            display: inline-block;
+            width: 150px;
+        }
+        .back-btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .back-btn:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Contact Details</h1>
+        
+        <div class="contact-detail">
+            <label>Full Name:</label>
+            <span>{{ contact.Full_name }}</span>
+        </div>
+        
+        <div class="contact-detail">
+            <label>Email:</label>
+            <span>{{ contact.email }}</span>
+        </div>
+        
+        <div class="contact-detail">
+            <label>Lead Classification:</label>
+            <span>{{ contact.lead_class }}</span>
+        </div>
+        
+        <!-- Add more fields as needed -->
+        {% if contact.phone %}
+        <div class="contact-detail">
+            <label>Phone:</label>
+            <span>{{ contact.phone }}</span>
+        </div>
+        {% endif %}
+        
+        {% if contact.address %}
+        <div class="contact-detail">
+            <label>Address:</label>
+            <span>{{ contact.address }}</span>
+        </div>
+        {% endif %}
+        
+        {% if contact.company %}
+        <div class="contact-detail">
+            <label>Company:</label>
+            <span>{{ contact.company }}</span>
+        </div>
+        {% endif %}
+        
+        {% if contact.notes %}
+        <div class="contact-detail">
+            <label>Notes:</label>
+            <span>{{ contact.notes }}</span>
+        </div>
+        {% endif %}
+        
+
+    </div>
+</body>
+</html>
