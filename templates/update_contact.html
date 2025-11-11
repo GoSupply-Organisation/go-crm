@@ -1,7 +1,14 @@
-<!-- templates/update_contact.html -->
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Update Contact</button>
-    <a href="{% url '' %}">Cancel</a>
-</form>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Contact</title>
+</head>
+<body>
+    <h1>Update existing contact</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save Contact</button>
+    </form>
+</body>
+</html>
