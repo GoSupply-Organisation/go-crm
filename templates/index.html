@@ -166,7 +166,7 @@
                         <div class="contact-item" id="contact-{{ contact.id }}">
                             <div class="contact-actions">
                                 <a href="{% url 'moreinfo_contact' contact.id %}" class="info-btn">More Info</a>
-                                <!-- <a href="{% url 'moreinfo_contact' contact.id %}" class="enquire-btn">Enquire</a> -->
+                                <a href="{% url 'render_email' contact.id %}" class="enquire-btn">Email</a>
                                 <a href="{% url 'update_contact' contact.id %}" class="edit-btn">Edit</a>
                                 <button class="delete-btn" 
                                         data-contact-id="{{ contact.id }}" 

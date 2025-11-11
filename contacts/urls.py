@@ -7,6 +7,7 @@ urlpatterns = [
     path('update/<int:contact_id>/', update_contact, name='update_contact'),  # Added contact_id parameter
     path('delete/<int:contact_id>/', delete_contact, name='delete_contact'),  # Added contact_id parameter
     path('moreinfo/<int:contact_id>/', more_info, name='moreinfo_contact'),
-    # path('send-enquiry/', send_enquiry, name='send_enquiry'),
+    path('email/<int:contact_id>/', render_email, name='render_email'),
+    path('send-email/<int:contact_id>/', email_email, name='email_email'),
 
 ]

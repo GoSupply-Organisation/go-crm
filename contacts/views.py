@@ -91,8 +91,55 @@ def delete_contact(request, contact_id):
         return JsonResponse({'success': False, 'error': 'Invalid request method'})
     
 
-def contact_contact(request, contact_id):
+def render_email(request, contact_id):
     contact = get_object_or_404(Contact, pk=contact_id)
-    contact.objects.filter(id=contact_id)
+    return render(request, "email.html", {'contact': contact})
+
+def email_email(request, contact_id):
+    if request.method == "POST":
+        try:
+            contact = get_object_or_404(Contact, pk=contact_id)
+            
+            # Validate required fields
+            subject = request.POST.get('subject')
+            message = request.POST.get('message')
+            from_email = request.POST.get('from_email')
+            
+            if not all([subject, message, from_email]):
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'All fields are required'
+                })
+            
+            # Send email
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=[contact.email],
+                fail_silently=False,
+            )
+            return JsonResponse({
+                'success': True, 
+                'message': 'Email sent successfully'
+            })
+            
+        except Exception as e:
+            # Log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Email sending error: {str(e)}")
+            
+            return JsonResponse({
+                'success': False, 
+                'error': f'Failed to send email: {str(e)}'
+            })
+    else: 
+        return JsonResponse({
+            'success': False, 
+            'error': 'Invalid request method'
+        }) 
+
+
 
     
