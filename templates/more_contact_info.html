@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>More Info - {{ contact.Full_name }}</title>
+    <title>Edit Contact - {{ contact.Full_name }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,67 +21,242 @@
             margin-bottom: 15px;
             padding: 10px;
             border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
         }
         .contact-detail label {
             font-weight: bold;
             display: inline-block;
             width: 150px;
+            flex-shrink: 0;
         }
-        .back-btn {
+        .contact-detail input,
+        .contact-detail textarea,
+        .contact-detail select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .contact-detail textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .btn {
             display: inline-block;
             padding: 10px 15px;
-            background: #6c757d;
             color: white;
             text-decoration: none;
             border-radius: 4px;
-            margin-top: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
         }
-        .back-btn:hover {
+        .save-btn {
+            background: #28a745;
+        }
+        .save-btn:hover {
+            background: #218838;
+        }
+        .cancel-btn {
+            background: #6c757d;
+        }
+        .cancel-btn:hover {
             background: #545b62;
+        }
+        .edit-btn {
+            background: #007bff;
+        }
+        .edit-btn:hover {
+            background: #0056b3;
+        }
+        .button-group {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .view-mode {
+            display: block;
+        }
+        .edit-mode {
+            display: none;
+        }
+        .editable:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div id="successMessage" class="success-message"></div>
+        
         <h1>Contact Details</h1>
         
-        <div class="contact-detail">
-            <label>Full Name:</label>
-            <span>{{ contact.Full_name }}</span>
-        </div>
-        
-        <div class="contact-detail">
-            <label>Email:</label>
-            <span>{{ contact.email }}</span>
-        </div>
-        
-        <div class="contact-detail">
-            <label>Lead Classification:</label>
-            <span>{{ contact.lead_class }}</span>
-        </div>
-        
-        <div class="contact-detail">
-            <label>Phone:</label>
-            <span>{{ contact.phone_number }}</span>
-        </div>
+        <form id="contactForm" method="post">
+            {% csrf_token %}
+            
+            <div class="contact-detail">
+                <label for="Full_name">Full Name:</label>
+                <span class="view-mode editable" data-field="Full_name">{{ contact.Full_name }}</span>
+                <input type="text" id="Full_name" name="Full_name" value="{{ contact.Full_name }}" class="edit-mode" required>
+            </div>
+            
+            <div class="contact-detail">
+                <label for="email">Email:</label>
+                <span class="view-mode editable" data-field="email">{{ contact.email }}</span>
+                <input type="email" id="email" name="email" value="{{ contact.email }}" class="edit-mode" required>
+            </div>
+            
+            <div class="contact-detail">
+                <label for="lead_class">Lead Classification:</label>
+                <span class="view-mode editable" data-field="lead_class">{{ contact.lead_class }}</span>
+                <select id="lead_class" name="lead_class" class="edit-mode">
+                    <option value="Hot" {% if contact.lead_class == "Hot" %}selected{% endif %}>Hot</option>
+                    <option value="Warm" {% if contact.lead_class == "Warm" %}selected{% endif %}>Warm</option>
+                    <option value="Cold" {% if contact.lead_class == "Cold" %}selected{% endif %}>Cold</option>
+                    <option value="New" {% if contact.lead_class == "New" %}selected{% endif %}>New</option>
+                </select>
+            </div>
+            
+            <div class="contact-detail">
+                <label for="phone_number">Phone:</label>
+                <span class="view-mode editable" data-field="phone_number">{{ contact.phone_number|default:"Not provided" }}</span>
+                <input type="text" id="phone_number" name="phone_number" value="{{ contact.phone_number }}" class="edit-mode">
+            </div>
 
-        <div class="contact-detail">
-            <label>Address:</label>
-            <span>{{ contact.address }}</span>
-        </div>
+            <div class="contact-detail">
+                <label for="address">Address:</label>
+                <span class="view-mode editable" data-field="address">{{ contact.address|default:"Not provided" }}</span>
+                <textarea id="address" name="address" class="edit-mode">{{ contact.address }}</textarea>
+            </div>
 
-        <div class="contact-detail">
-            <label>Company:</label>
-            <span>{{ contact.company }}</span>
-        </div>
+            <div class="contact-detail">
+                <label for="company">Company:</label>
+                <span class="view-mode editable" data-field="company">{{ contact.company|default:"Not provided" }}</span>
+                <input type="text" id="company" name="company" value="{{ contact.company }}" class="edit-mode">
+            </div>
 
-        <div class="contact-detail">
-            <label>Notes:</label>
-            <span>{{ contact.notes }}</span>
-        </div>
+            <div class="contact-detail">
+                <label for="notes">Notes:</label>
+                <span class="view-mode editable" data-field="notes">{{ contact.notes|default:"No notes" }}</span>
+                <textarea id="notes" name="notes" class="edit-mode">{{ contact.notes }}</textarea>
+            </div>
 
-        
-
+            <div class="button-group">
+                <button type="button" id="editBtn" class="btn edit-btn">Edit Contact</button>
+                <button type="submit" id="saveBtn" class="btn save-btn edit-mode">Save Changes</button>
+                <button type="button" id="cancelBtn" class="btn cancel-btn edit-mode">Cancel</button>
+                <a href="/index" class="btn cancel-btn">Back to List</a>
+            </div>
+        </form>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editBtn = document.getElementById('editBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const contactForm = document.getElementById('contactForm');
+            const successMessage = document.getElementById('successMessage');
+            
+            // Enable editing mode
+            editBtn.addEventListener('click', function() {
+                document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'block');
+                editBtn.style.display = 'none';
+            });
+            
+            // Cancel editing
+            cancelBtn.addEventListener('click', function() {
+                document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'block');
+                document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'none');
+                editBtn.style.display = 'inline-block';
+            });
+            
+            // Handle form submission with AJAX
+            contactForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(contactForm);
+                
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the view with new values
+                        document.querySelectorAll('.editable').forEach(span => {
+                            const fieldName = span.getAttribute('data-field');
+                            const input = document.querySelector(`[name="${fieldName}"]`);
+                            if (input) {
+                                span.textContent = input.value || 'Not provided';
+                            }
+                        });
+                        
+                        // Show success message
+                        successMessage.textContent = data.message;
+                        successMessage.style.display = 'block';
+                        
+                        // Switch back to view mode
+                        cancelBtn.click();
+                        
+                        // Hide success message after 3 seconds
+                        setTimeout(() => {
+                            successMessage.style.display = 'none';
+                        }, 3000);
+                    } else {
+                        alert('Error updating contact: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating contact');
+                });
+            });
+            
+            // Optional: Click to edit individual fields
+            document.querySelectorAll('.editable').forEach(editable => {
+                editable.addEventListener('click', function() {
+                    const fieldName = this.getAttribute('data-field');
+                    const input = document.querySelector(`[name="${fieldName}"]`);
+                    
+                    if (input) {
+                        this.style.display = 'none';
+                        input.style.display = 'block';
+                        input.focus();
+                        
+                        // Save on blur or enter key
+                        const saveField = () => {
+                            this.textContent = input.value || 'Not provided';
+                            this.style.display = 'block';
+                            input.style.display = 'none';
+                        };
+                        
+                        input.addEventListener('blur', saveField);
+                        input.addEventListener('keypress', function(e) {
+                            if (e.key === 'Enter') {
+                                saveField();
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
