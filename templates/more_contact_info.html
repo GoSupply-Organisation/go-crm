@@ -94,6 +94,44 @@
             margin-bottom: 15px;
             display: none;
         }
+        .email-list {
+            margin-top: 10px;
+            margin-left: 150px;
+        }
+        .email-item {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .email-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .email-subject {
+            color: #495057;
+        }
+        .email-date {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .email-message {
+            margin-top: 5px;
+            color: #212529;
+        }
+        .email-from {
+            font-style: italic;
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .no-emails {
+            color: #6c757d;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -150,6 +188,28 @@
                 <label for="notes">Notes:</label>
                 <span class="view-mode editable" data-field="notes">{{ contact.notes|default:"No notes" }}</span>
                 <textarea id="notes" name="notes" class="edit-mode">{{ contact.notes }}</textarea>
+            </div>
+
+            <div class="contact-detail">
+                <label for="previous_emails">Previous Emails:</label>
+                <div class="email-list">
+                    {% if sent_emails %}
+                        {% for email in sent_emails %}
+                            <div class="email-item">
+                                <div class="email-header">
+                                    <span class="email-subject">{{ email.subject }}</span>
+                                    <span class="email-date">{{ email.sent_at|date:"Y-m-d H:i" }}</span>
+                                </div>
+                                <div class="email-message">{{ email.message }}</div>
+                                {% if email.from_email %}
+                                    <div class="email-from">From: {{ email.from_email }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-emails">No emails sent to this contact yet</div>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="button-group">

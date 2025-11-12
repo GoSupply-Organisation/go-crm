@@ -106,10 +106,10 @@ def email_email(request, contact_id):
             message = request.POST.get('message')
             from_email = recip_email
             
-            if not all([subject, message, from_email]):
+            if not all([subject, message]):
                 return JsonResponse({
                     'success': False, 
-                    'error': 'All fields are required'
+                    'error': 'Subject and message are required'
                 })
             
             # Send email
@@ -125,15 +125,17 @@ def email_email(request, contact_id):
                 contact=contact,
                 subject=subject,
                 message=message,
-                sent_at = timezone.now(),
+                sent_at=timezone.now(),
                 from_email=from_email,
+                sent_by=request.user if request.user.is_authenticated else None
             )
+            # No need to call emails.save() after objects.create()
+            print("Saved the sent email to the database")
 
             return JsonResponse({
                 'success': True, 
                 'message': 'Email sent successfully',
-                'redirect': '/index',
-                'saved_email_id': emails
+                'redirect': '/index'  # Include redirect URL in the JSON response
             })
             
         except Exception as e:
@@ -150,10 +152,37 @@ def email_email(request, contact_id):
         return JsonResponse({
             'success': False, 
             'error': 'Invalid request method'
-        }) 
+        })
+
+def contact_detail(request, contact_id):
+    contact = get_object_or_404(Contact, pk=contact_id)
+    sent_emails = sent_emails.objects.filter(contact=contact).order_by('-sent_at')
+    
+    if request.method == 'POST':
+        # Handle form submission
+        form = ContactForm(request.POST, instance=contact)
+        if form.is_valid():
+            form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'Contact updated successfully'})
+            return redirect('contact_detail', contact_id=contact.id)
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': form.errors})
+    else:
+        form = ContactForm(instance=contact)
+    
+    context = {
+        'contact': contact,
+        'sent_emails': sent_emails,
+        'form': form,
+    }
+    return render(request, 'contact_detail.html', context)
 
 
 def ahhh(request):
-    if request.method == "GET": 
-        emails = get_object_or_404(sent_emails)
-    return JsonResponse({'emails': emails})
+    # Cant think of a better name right now
+    # This just returns all the sent messages for the index page
+    emails = sent_emails.objects.all()
+    # The key in the context dictionary must match the variable name in the template
+    return render(request, 'index.html', {'emails': emails})

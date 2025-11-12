@@ -147,48 +147,6 @@
             margin-bottom: 15px;
             display: none;
         }
-        .email-item {
-            border-bottom: 1px solid #eee;
-            padding: 15px 0;
-            position: relative;
-        }
-        .email-item:last-child {
-            border-bottom: none;
-        }
-        .email-field {
-            margin-bottom: 8px;
-        }
-        .email-subject {
-            font-weight: bold;
-            color: #007bff;
-        }
-        .email-meta {
-            font-size: 0.9em;
-            color: #6c757d;
-        }
-        .email-preview {
-            margin-top: 8px;
-            color: #495057;
-            max-height: 60px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .view-btn {
-            padding: 6px 12px;
-            margin-right: 8px;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            border: none;
-            background: #6c757d;
-            color: white;
-            display: inline-block;
-        }
-        .view-btn:hover {
-            background: #5a6268;
-            opacity: 0.8;
-        }
     </style>
 </head>
 <body>
@@ -198,7 +156,6 @@
         <div class="tabs">
             <div class="tab active" data-tab="contacts">Current Users</div>
             <div class="tab" data-tab="leads">AI Leads</div>
-            <div class="tab" data-tab="sent-emails">Sent Emails</div>
         </div>
 
         <div id="contacts" class="tab-content active">
@@ -279,42 +236,6 @@
             {% endif %}
             <a href="{% url 'adding_contact' %}" class="add-btn">Add New Lead</a>
         </div>
-
-        <div id="sent-emails" class="tab-content">
-            <h2>Sent Emails</h2>
-            {% if sent_emails %}
-                <div class="emails-list">
-                    {% for email in sent_emails %}
-                        <div class="email-item" id="email-{{ email.id }}">
-                            <div class="contact-actions">
-                                <a href="{% url 'view_email' email.id %}" class="view-btn">View</a>
-                                <button class="delete-btn" 
-                                        data-email-id="{{ email.id }}" 
-                                        data-email-type="sent-email">
-                                    Delete
-                                </button>
-                            </div>
-                            
-                            <div class="email-field">
-                                <span class="email-subject">{{ email.subject }}</span>
-                            </div>
-                            <div class="email-field email-meta">
-                                <strong>To:</strong> {{ email.contact.email }} | 
-                                <strong>Sent:</strong> {{ email.sent_at|date:"M d, Y, H:i" }}
-                                {% if email.sent_by %}
-                                    | <strong>By:</strong> {{ email.sent_by.username }}
-                                {% endif %}
-                            </div>
-                            <div class="email-preview">
-                                {{ email.message|truncatewords:30 }}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="no-records">No sent emails found.</div>
-            {% endif %}
-        </div>
     </div>
 
     <script>
@@ -330,81 +251,42 @@
             });
         });
 
-        // Delete functionality with AJAX for contacts
+        // Delete functionality with AJAX
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const contactId = this.getAttribute('data-contact-id');
                 const contactType = this.getAttribute('data-contact-type');
+                const contactName = this.closest('.contact-item').querySelector('strong').nextSibling.textContent.trim();
                 
-                // Check if this is a contact or email delete
-                if (contactType === 'contact' || contactType === 'lead') {
-                    const contactName = this.closest('.contact-item').querySelector('strong').nextSibling.textContent.trim();
-                    
-                    if (confirm(`Are you sure you want to delete ${contactName}?`)) {
-                        // Send AJAX request to delete the contact
-                        fetch(`/delete/${contactId}/`, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': getCookie('csrftoken'),
-                                'Content-Type': 'application/json',
-                            },
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Remove the contact item from DOM
-                                const contactElement = document.getElementById(`contact-${contactId}`);
-                                contactElement.remove();
-                                
-                                // Show success message
-                                showSuccessMessage(`${contactName} has been deleted successfully.`);
-                                
-                                // If no contacts left, show "no records" message
-                                checkEmptyList(contactType);
-                            } else {
-                                alert('Error deleting contact: ' + data.error);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Error deleting contact');
-                        });
-                    }
-                } else if (contactType === 'sent-email') {
-                    // Handle email deletion
-                    const emailId = this.getAttribute('data-email-id');
-                    const emailSubject = this.closest('.email-item').querySelector('.email-subject').textContent;
-                    
-                    if (confirm(`Are you sure you want to delete the email "${emailSubject}"?`)) {
-                        // Send AJAX request to delete the email
-                        fetch(`/delete-email/${emailId}/`, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': getCookie('csrftoken'),
-                                'Content-Type': 'application/json',
-                            },
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Remove the email item from DOM
-                                const emailElement = document.getElementById(`email-${emailId}`);
-                                emailElement.remove();
-                                
-                                // Show success message
-                                showSuccessMessage(`Email "${emailSubject}" has been deleted successfully.`);
-                                
-                                // If no emails left, show "no records" message
-                                checkEmptyEmailList();
-                            } else {
-                                alert('Error deleting email: ' + data.error);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Error deleting email');
-                        });
-                    }
+                if (confirm(`Are you sure you want to delete ${contactName}?`)) {
+                    // Send AJAX request to delete the contact
+                    fetch(`/delete/${contactId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken'),
+                            'Content-Type': 'application/json',
+                        },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove the contact item from DOM
+                            const contactElement = document.getElementById(`contact-${contactId}`);
+                            contactElement.remove();
+                            
+                            // Show success message
+                            showSuccessMessage(`${contactName} has been deleted successfully.`);
+                            
+                            // If no contacts left, show "no records" message
+                            checkEmptyList(contactType);
+                        } else {
+                            alert('Error deleting contact: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error deleting contact');
+                    });
                 }
             });
         });
@@ -449,22 +331,6 @@
                     noRecordsDiv.className = 'no-records';
                     noRecordsDiv.textContent = contactType === 'contact' ? 'No current users found.' : 'No leads found.';
                     tabContent.querySelector('.contacts-list').appendChild(noRecordsDiv);
-                }
-            }
-        }
-
-        // Function to check if email list is empty and show appropriate message
-        function checkEmptyEmailList() {
-            const tabContent = document.getElementById('sent-emails');
-            const emailItems = tabContent.querySelectorAll('.email-item');
-            const noRecords = tabContent.querySelector('.no-records');
-            
-            if (emailItems.length === 0) {
-                if (!noRecords) {
-                    const noRecordsDiv = document.createElement('div');
-                    noRecordsDiv.className = 'no-records';
-                    noRecordsDiv.textContent = 'No sent emails found.';
-                    tabContent.querySelector('.emails-list').appendChild(noRecordsDiv);
                 }
             }
         }
