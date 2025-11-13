@@ -1,6 +1,5 @@
 from django.core.mail import send_mail
 from django.http import JsonResponse
-
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404   
 from .models import Contact, sent_emails
@@ -9,12 +8,44 @@ from django.template.loader import get_template
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
-# Create your views here.
+from django.db.models import Q
 
-# Renders the main index page with a list of the contacts
+# Create your views here.
 def index_func(request):
+    lead_class_filter = request.GET.get('lead_class', None)
+    search_query = request.GET.get('search', None)
+    sort_by = request.GET.get('sort_by', 'Full_name')
+    
     contacts = Contact.objects.all()
-    return render(request, 'index.html', {'contacts': contacts})
+    
+    # Apply lead class filter if provided
+    if lead_class_filter:
+        contacts = contacts.filter(lead_class=lead_class_filter)
+    
+    # Apply search filter if provided
+    if search_query:
+        contacts = contacts.filter(
+            Q(Full_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone_number__icontains=search_query)
+        )
+    
+    # Apply sorting
+    contacts = contacts.order_by(sort_by)
+    
+    # If you have a separate Lead model for the AI Leads tab, add it here
+    # For now, I'll assume you want to show the same contacts in both tabs
+    # but you can modify this based on your actual models
+    leads = contacts  # or use a different queryset if you have separate models
+    
+    return render(request, 'index.html', {
+        'contacts': contacts,
+        'leads': leads,
+        'current_filter': lead_class_filter,
+        'search_query': search_query,
+        'sort_by': sort_by,
+        'lead_classifications': Contact.LEAD_CLASSIFICATIONS
+    })
 
 # Get more info about a specific contact like as seen below
 def more_info(request, contact_id):

@@ -147,6 +147,139 @@
             margin-bottom: 15px;
             display: none;
         }
+
+                /* Filter Bar Styles */
+        .filter-bar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .filter-form {
+            width: 100%;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .apply-btn {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .apply-btn:hover {
+            background: #0056b3;
+        }
+
+        .clear-btn {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            display: inline-block;
+        }
+
+        .clear-btn:hover {
+            background: #545b62;
+            color: white;
+        }
+
+        /* Active Filters Styles */
+        .active-filters {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .filter-tag {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 5px 10px 5px 0;
+            font-size: 14px;
+        }
+
+        .remove-filter {
+            margin-left: 5px;
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .remove-filter:hover {
+            color: #bd2130;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .filter-row {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                min-width: 100%;
+            }
+            
+            .filter-actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+            
+            .apply-btn,
+            .clear-btn {
+                flex: 1;
+                text-align: center;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -157,7 +290,76 @@
             <div class="tab active" data-tab="contacts">Current Users</div>
             <div class="tab" data-tab="leads">AI Leads</div>
         </div>
-
+        <div class="filter-bar">
+            <form method="GET" action="" class="filter-form">
+                <div class="filter-row">
+                    <!-- Search Box -->
+                    <div class="filter-group">
+                        <label for="search">Search:</label>
+                        <input type="text" 
+                               id="search" 
+                               name="search" 
+                               value="{{ search_query|default:'' }}" 
+                               placeholder="Search by name, email, or phone...">
+                    </div>
+                    
+                    <!-- Lead Classification Filter -->
+                    <div class="filter-group">
+                        <label for="lead_class">Lead Type:</label>
+                        <select id="lead_class" name="lead_class">
+                            <option value="">All Lead Types</option>
+                            {% for value, label in lead_classifications %}
+                                <option value="{{ value }}" 
+                                        {% if current_filter == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Sort Options -->
+                    <div class="filter-group">
+                        <label for="sort_by">Sort By:</label>
+                        <select id="sort_by" name="sort_by">
+                            <option value="Full_name" {% if sort_by == 'Full_name' %}selected{% endif %}>Name (A-Z)</option>
+                            <option value="-Full_name" {% if sort_by == '-Full_name' %}selected{% endif %}>Name (Z-A)</option>
+                            <option value="email" {% if sort_by == 'email' %}selected{% endif %}>Email (A-Z)</option>
+                            <option value="-email" {% if sort_by == '-email' %}selected{% endif %}>Email (Z-A)</option>
+                            <option value="lead_class" {% if sort_by == 'lead_class' %}selected{% endif %}>Lead Type</option>
+                            <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest First</option>
+                            <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Oldest First</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="filter-actions">
+                        <button type="submit" class="apply-btn">Apply Filters</button>
+                        <a href="{% url 'home' %}" class="clear-btn">Clear All</a>
+                    </div>
+                </div>
+                
+                <!-- Active Filters Display -->
+                {% if current_filter or search_query %}
+                <div class="active-filters">
+                    <strong>Active Filters:</strong>
+                    {% if search_query %}
+                        <span class="filter-tag">
+                            Search: "{{ search_query }}"
+                            <a href="?{% if current_filter %}lead_class={{ current_filter }}&{% endif %}{% if sort_by and sort_by != 'Full_name' %}sort_by={{ sort_by }}{% endif %}" 
+                               class="remove-filter">×</a>
+                        </span>
+                    {% endif %}
+                    {% if current_filter %}
+                        <span class="filter-tag">
+                            Lead Type: {{ current_filter }}
+                            <a href="?{% if search_query %}search={{ search_query }}&{% endif %}{% if sort_by and sort_by != 'Full_name' %}sort_by={{ sort_by }}{% endif %}" 
+                               class="remove-filter">×</a>
+                        </span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </form>
+        </div>
         <div id="contacts" class="tab-content active">
             <h2>Current Leads</h2>
             {% if contacts %}
@@ -220,7 +422,7 @@
                                 {{ lead.lead_classification|default:"Not specified" }}
                             </div>
                             <div class="contact-field">
-                                <strong>Phone:</strong> {{ lead.phone|default:"Not provided" }}
+                                <strong>phone_number:</strong> {{ lead.phone|default:"Not provided" }}
                             </div>
                             <div class="contact-field">
                                 <strong>Address:</strong> {{ lead.address|default:"Not provided" }}
@@ -318,6 +520,50 @@
                 successMessage.style.display = 'none';
             }, 3000);
         }
+
+        // Add this to your existing script section
+        document.addEventListener('DOMContentLoaded', function() {
+            // Real-time search debounce
+            let searchTimeout;
+            const searchInput = document.getElementById('search');
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        this.form.submit();
+                    }, 500);
+                });
+            }
+            
+            // Auto-submit when select filters change
+            const leadClassSelect = document.getElementById('lead_class');
+            const sortBySelect = document.getElementById('sort_by');
+            
+            if (leadClassSelect) {
+                leadClassSelect.addEventListener('change', function() {
+                    this.form.submit();
+                });
+            }
+            
+            if (sortBySelect) {
+                sortBySelect.addEventListener('change', function() {
+                    this.form.submit();
+                });
+            }
+            
+            // Show loading state
+            const filterForm = document.querySelector('.filter-form');
+            if (filterForm) {
+                filterForm.addEventListener('submit', function() {
+                    const applyBtn = this.querySelector('.apply-btn');
+                    if (applyBtn) {
+                        applyBtn.innerHTML = 'Applying...';
+                        applyBtn.disabled = true;
+                    }
+                });
+            }
+        });
 
         // Function to check if list is empty and show appropriate message
         function checkEmptyList(contactType) {
