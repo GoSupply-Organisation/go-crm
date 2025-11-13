@@ -11,18 +11,20 @@ from django.views.decorators.csrf import csrf_protect
 from django.db.models import Q
 
 # Create your views here.
+
 def index_func(request):
-    lead_class_filter = request.GET.get('lead_class', None)
-    search_query = request.GET.get('search', None)
+    # Get parameters with defaults
+    lead_class = request.GET.get('lead_class')
+    search_query = request.GET.get('search')
     sort_by = request.GET.get('sort_by', 'Full_name')
     
+    # Start with all contacts
     contacts = Contact.objects.all()
     
-    # Apply lead class filter if provided
-    if lead_class_filter:
-        contacts = contacts.filter(lead_class=lead_class_filter)
+    # FILTERING: Reduce which records we see
+    if lead_class:
+        contacts = contacts.filter(lead_class=lead_class)
     
-    # Apply search filter if provided
     if search_query:
         contacts = contacts.filter(
             Q(Full_name__icontains=search_query) |
@@ -30,18 +32,14 @@ def index_func(request):
             Q(phone_number__icontains=search_query)
         )
     
-    # Apply sorting
+    # SORTING: Change order of records (doesn't affect which records)
     contacts = contacts.order_by(sort_by)
     
-    # If you have a separate Lead model for the AI Leads tab, add it here
-    # For now, I'll assume you want to show the same contacts in both tabs
-    # but you can modify this based on your actual models
-    leads = contacts  # or use a different queryset if you have separate models
-    
+    # Pass to template
     return render(request, 'index.html', {
         'contacts': contacts,
-        'leads': leads,
-        'current_filter': lead_class_filter,
+        'leads': contacts,
+        'current_filter': lead_class,
         'search_query': search_query,
         'sort_by': sort_by,
         'lead_classifications': Contact.LEAD_CLASSIFICATIONS
