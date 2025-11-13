@@ -163,7 +163,7 @@ def email_email(request, contact_id):
                 print("Shifting from new to growing interest")
                 up_dog = contact.lead_class
                 if up_dog == "New":
-                    contact.lead_class = "Growing Interest"
+                    contact.lead_class = "Contacted"
                     contact.save()
             # No need to call emails.save() after objects.create()
             print("Saved the sent email to the database")

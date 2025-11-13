@@ -10,6 +10,7 @@ class Contact(models.Model):
         # New classification field with predefined choices
     LEAD_CLASSIFICATIONS = [
         ('New', 'New Lead'),
+        ('Contacted', 'Contacted'),
         ('Growing Interest', 'Growing Interest'),
         ('Leading', 'Leading'),
         ('Dying', 'Dying'),
@@ -19,7 +20,7 @@ class Contact(models.Model):
     lead_class = models.CharField(
         max_length=20,
         choices=LEAD_CLASSIFICATIONS,
-        default='new',
+        default='New',
         blank=True,
         null=True,
     )

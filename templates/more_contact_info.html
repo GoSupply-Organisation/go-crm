@@ -157,12 +157,11 @@
             
             <div class="contact-detail">
                 <label for="lead_class">Lead Classification:</label>
-                <span class="view-mode editable" data-field="lead_class">{{ contact.lead_class }}</span>
+                <span class="view-mode editable" data-field="lead_class">{{ contact.get_lead_class_display }}</span>
                 <select id="lead_class" name="lead_class" class="edit-mode">
-                    <option value="Hot" {% if contact.lead_class == "Hot" %}selected{% endif %}>Hot</option>
-                    <option value="Warm" {% if contact.lead_class == "Warm" %}selected{% endif %}>Warm</option>
-                    <option value="Cold" {% if contact.lead_class == "Cold" %}selected{% endif %}>Cold</option>
-                    <option value="New" {% if contact.lead_class == "New" %}selected{% endif %}>New</option>
+                    {% for value, label in LEAD_CLASSIFICATIONS %}
+                        <option value="{{ value }}" {% if contact.lead_class == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
                 </select>
             </div>
             
