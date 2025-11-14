@@ -192,8 +192,8 @@
             <div class="contact-detail">
                 <label for="previous_emails">Previous Emails:</label>
                 <div class="email-list">
-                    {% if send_emails %}  <!-- Change this line from sent_emails to Send_emails -->
-                        {% for email in send_emails %}  <!-- Change this line too -->
+                    {% if send_emails %}  
+                        {% for email in send_emails %}
                             <div class="email-item">
                                 <div class="email-header">
                                     <span class="email-subject">{{ email.subject }}</span>

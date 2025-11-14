@@ -370,6 +370,7 @@
                                 <a href="{% url 'moreinfo_contact' contact.id %}" class="info-btn">More Info</a>
                                 <a href="{% url 'render_email' contact.id %}" class="enquire-btn">Email</a>
                                 <a href="{% url 'update_contact' contact.id %}" class="edit-btn">Edit</a>
+                                <a href="{% url 'send_sms' contact.id %}" class="enquire-btn">SMS</a>
                                 <button class="delete-btn" 
                                         data-contact-id="{{ contact.id }}" 
                                         data-contact-type="contact">

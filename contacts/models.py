@@ -40,4 +40,11 @@ class sent_emails(models.Model):
     def __str__(self):
         return f"Email to {self.contact.Full_name} on {self.sent_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
-    
+
+class sent_sms(models.Model):
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE)
+    body = models.CharField(max_length=2000, blank=True, null=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    def str__(self):
+        return f"SMS to {self.send_to.Full_name} on {self.sent_at.strftime('%Y-%m-%d %H:%M:%S')}"
