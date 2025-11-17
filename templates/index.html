@@ -130,6 +130,19 @@
             display: inline-block;
         }
 
+        .enquire-btn1 {
+            padding: 6px 12px;
+            margin-right: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            background: #219428;
+            color: rgb(255, 255, 255);
+            display: inline-block;
+        }
+
         .enquire-btn:hover {
             background: #e0a800;
             opacity: 0.8;
@@ -370,7 +383,7 @@
                                 <a href="{% url 'moreinfo_contact' contact.id %}" class="info-btn">More Info</a>
                                 <a href="{% url 'render_email' contact.id %}" class="enquire-btn">Email</a>
                                 <a href="{% url 'update_contact' contact.id %}" class="edit-btn">Edit</a>
-                                <a href="{% url 'send_sms' contact.id %}" class="enquire-btn">SMS</a>
+                                <a href="{% url 'send_sms' contact.id %}" class="enquire-btn1">SMS</a>
                                 <button class="delete-btn" 
                                         data-contact-id="{{ contact.id }}" 
                                         data-contact-type="contact">

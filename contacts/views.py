@@ -129,6 +129,7 @@ def render_email(request, contact_id):
     return render(request, "email.html", {'contact': contact})
 
 def email_email(request, contact_id):
+# in prod move this to the actual company number and move it to Mailgun
     if request.method == "POST":
         try:
             contact = get_object_or_404(Contact, pk=contact_id)
@@ -194,6 +195,76 @@ def email_email(request, contact_id):
             'error': 'Invalid request method'
         })
 
+def render_sms(request, contact_id):
+    contact = get_object_or_404(Contact, pk=contact_id)
+    return render(request, "message.html", {'contact': contact})
+
+def sms_sms(request, contact_id):
+    company_number = "0424854899"
+    contact = get_object_or_404(Contact, pk=contact_id)
+    
+    if request.method == 'POST':
+        try:
+            recip_number = contact.phone_number
+            body = request.POST.get('body')
+            sent_at = timezone.now()
+            
+            if not all([body, recip_number]):
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Need body and number'
+                })
+                
+            sms = send_sms(
+                body=body,
+                originator=company_number,
+                recipients=[recip_number]
+            )
+
+            sms_record = sent_sms.objects.create(
+                contact=contact,
+                body=body,
+                sent_at=sent_at
+            )
+            
+            if sms:
+                print("SMS sent successfully")
+                print("Shifting from new to Contacted")
+                up_dog = contact.lead_class
+                if up_dog == "New":
+                    contact.lead_class = "Contacted"
+                    contact.save()
+            
+            print("Saved the sent SMS to the database")
+            return JsonResponse({
+                'success': True, 
+                'message': 'Text sent successfully',
+                'redirect': '/index'
+            })
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"SMS sending error: {str(e)}")
+            
+            return JsonResponse({
+                'success': False, 
+                'error': f'Failed to send SMS: {str(e)}'
+            })
+    
+    else:  # Handle GET request
+        return render(request, "message.html", {'contact': contact})
+    
+
+def ahhh(request):
+    # Cant think of a better name right now
+    # This just returns all the sent messages for the page
+    emails = sent_emails.objects.all().order_by('-sent_at')  # Order by most recent first
+    # The key in the context dictionary must match the variable name in the template
+    return render(request, 'index.html', {'emails': emails})
+
+
+
 def contact_detail(request, contact_id):
     contact = get_object_or_404(Contact, pk=contact_id)
     sent_emails = sent_emails.objects.filter(contact=contact).order_by('-sent_at')
@@ -218,67 +289,3 @@ def contact_detail(request, contact_id):
         'form': form,
     }
     return render(request, 'contact_detail.html', context)
-
-
-def ahhh(request):
-    # Cant think of a better name right now
-    # This just returns all the sent messages for the page
-    emails = sent_emails.objects.all().order_by('-sent_at')  # Order by most recent first
-    # The key in the context dictionary must match the variable name in the template
-    return render(request, 'index.html', {'emails': emails})
-
-
-def sms_sms(request, contact_id):
-    contact = get_object_or_404(Contact, pk=contact_id)
-    
-    text_message = request.POST.get('body')
-
-    # Validate phone number exists
-    if not contact.phone_number:
-        return JsonResponse({'success': False, 'message': 'Contact has no phone number'}, status=400)
-
-    originator = "0424854899"  # Consider making this configurable
-    recipient_number = contact.phone_number
-
-    try:
-        # Send SMS (adjust based on your SMS service's actual API)
-        sms_result = send_sms(
-            body=text_message,
-            recipients=[recipient_number],
-            originator=originator
-        )
-
-        # Log the SMS
-        save_sms = sent_sms.objects.create(
-            contact=contact.phone_number,
-            body=text_message,
-            sent_at=timezone.now()
-        )
-
-        # Update contact status if SMS was successful
-        if sms_result:  # Adjust this condition based on your SMS service's return value
-            print("SMS sent successfully")
-            
-            # Update lead_class if contact is in "New" status
-            if contact.lead_class == "New":
-                contact.lead_class = "Contacted"
-                contact.save()
-                print("Shifted from New to Contacted")
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'SMS sent successfully',
-                'redirect': '/index'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'message': 'SMS failed to send'
-            }, status=500)
-
-    except Exception as e:
-        print(f"SMS sending error: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'message': f'Error sending SMS: {str(e)}'
-        }, status=500)

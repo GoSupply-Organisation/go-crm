@@ -146,4 +146,6 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 
-SMS_BACKEND = 'sms.backends.locmem.SmsBackend'
+SMS_BACKEND = 'sms.backends.twilio.SmsBackend'
+TWILIO_ACCOUNT_SID = 'ACdd1613d4a79b9669294bdc93ea7d5a27'
+TWILIO_AUTH_TOKEN = 'live_redacted-twilio-auth-token'

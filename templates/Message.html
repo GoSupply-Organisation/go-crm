@@ -164,7 +164,7 @@
             const formData = new FormData(this);
             
             // Send AJAX request
-            fetch("{% url 'sms_sms' contact_id=contact.id %}", {
+            fetch("{% url 'send_sms' contact_id=contact.id %}", {
                 method: 'POST',
                 body: formData,
                 headers: {
