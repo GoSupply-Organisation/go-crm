@@ -6,8 +6,8 @@ services:
     ports:
       - "1111:1111"
     environment:
-      POSTGRES_USER: "metro-user"
-      POSTGRES_PASSWORD: "its_terrible"
-      POSTGRES_DB: "458speciale"
+      POSTGRES_USER: "Go-crm"
+      POSTGRES_PASSWORD: "G0-Supply-C3RM-458"
+      POSTGRES_DB: "go-crm"
       restart: "always"
 

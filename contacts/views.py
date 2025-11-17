@@ -7,23 +7,30 @@ from .models import Contact, sent_emails, sent_sms
 from .forms import ContactForm
 from django.template.loader import get_template
 from django.contrib import messages
-from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.db.models import Q
 
 
-# Create your views here.
-
-def index_func(request):
-    # Get parameters with defaults
+def contact_list_view(request):
+    """Main view for displaying and filtering the contact list.
+    
+    Handles filtering by lead classification, searching by name/email/phone,
+    and sorting contacts by specified fields. Renders the index template
+    with contacts and filter/sort parameters.
+    
+    Args:
+        request: Django request object containing GET parameters for filtering,
+                 searching, and sorting.
+    
+    Returns:
+        HttpResponse: Rendered index.html template with contacts and filter options.
+    """
     lead_class = request.GET.get('lead_class')
     search_query = request.GET.get('search')
     sort_by = request.GET.get('sort_by', 'Full_name')
     
-    # Start with all contacts
     contacts = Contact.objects.all()
     
-    # FILTERING: Reduce which records we see
     if lead_class:
         contacts = contacts.filter(lead_class=lead_class)
     
@@ -34,10 +41,8 @@ def index_func(request):
             Q(phone_number__icontains=search_query)
         )
     
-    # SORTING: Change order of records (doesn't affect which records)
     contacts = contacts.order_by(sort_by)
     
-    # Pass to template
     return render(request, 'index.html', {
         'contacts': contacts,
         'leads': contacts,
@@ -47,12 +52,27 @@ def index_func(request):
         'lead_classifications': Contact.LEAD_CLASSIFICATIONS
     })
 
-# Get more info about a specific contact like as seen below
-def more_info(request, contact_id):
+
+def contact_detail_view(request, contact_id):
+    """Displays detailed contact information and handles inline editing.
+    
+    Shows a single contact's details and allows for inline editing of all fields.
+    Supports both AJAX and standard form submissions for updates.
+    
+    Args:
+        request: Django request object.
+        contact_id: Primary key of the Contact to display/edit.
+    
+    Returns:
+        HttpResponse: Rendered more_contact_info.html template or JSON response
+                     for AJAX requests.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     contact = get_object_or_404(Contact, pk=contact_id)
     
     if request.method == 'POST':
-        # Handle the inline editing form submission
         contact.Full_name = request.POST.get('Full_name', contact.Full_name)
         contact.email = request.POST.get('email', contact.email)
         contact.lead_class = request.POST.get('lead_class', contact.lead_class)
@@ -63,7 +83,6 @@ def more_info(request, contact_id):
         
         try:
             contact.save()
-            # Return success response for AJAX or redirect
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True, 'message': 'Contact updated successfully'})
             else:
@@ -76,21 +95,48 @@ def more_info(request, contact_id):
                                                       "LEAD_CLASSIFICATIONS": Contact.LEAD_CLASSIFICATIONS,
                                                       'send_emails': sent_emails.objects.filter(contact=contact).order_by('-sent_at')})
 
-# Manually adding a contact
-def adding_contact(request):
+
+def create_contact_view(request):
+    """Handles manual creation of a new contact.
+    
+    Processes the ContactForm and sets the creation timestamp before saving.
+    Redirects to the contact list on success.
+    
+    Args:
+        request: Django request object containing form data.
+    
+    Returns:
+        HttpResponse: Redirect to index on success or rendered adding_contact.html
+                     with form on GET/error.
+    """
     if request.method == "POST":
         form = ContactForm(request.POST)
         if form.is_valid():
-            contact = form.save(commit=False)  # Don't save to DB yet
-            contact.created_at = timezone.now()  # Set current timestamp
-            contact.save()  # Now save to DB
-            return redirect('/index')  # Replace with your desired URL name
+            contact = form.save(commit=False)
+            contact.created_at = timezone.now()
+            contact.save()
+            return redirect('/index')
     else:
         form = ContactForm()
     return render(request, 'adding_contact.html', {'form': form})
 
-# Updating an existing contact
-def update_contact(request, contact_id):
+
+def edit_contact_view(request, contact_id):
+    """Handles editing an existing contact using Django forms.
+    
+    Displays a pre-populated ContactForm for the specified contact.
+    
+    Args:
+        request: Django request object.
+        contact_id: Primary key of the Contact to edit.
+    
+    Returns:
+        HttpResponse: Redirect to index on success or rendered update_contact.html
+                     with form on GET/error.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     contact = get_object_or_404(Contact, pk=contact_id)
     
     if request.method == "POST":
@@ -98,7 +144,7 @@ def update_contact(request, contact_id):
         if form.is_valid():
             form.save()
             messages.success(request, 'Contact updated successfully!')
-            return redirect('/index')  # Redirect back to the main page
+            return redirect('/index')
     else:
         form = ContactForm(instance=contact)
     
@@ -107,9 +153,23 @@ def update_contact(request, contact_id):
         'contact': contact
     })
 
-# Deleting a contact
+
 @csrf_protect
-def delete_contact(request, contact_id):
+def delete_contact_view(request, contact_id):
+    """Handles deletion of a contact.
+    
+    Deletes the specified contact via POST request and returns JSON response.
+    
+    Args:
+        request: Django request object.
+        contact_id: Primary key of the Contact to delete.
+    
+    Returns:
+        JsonResponse: Success/failure status and message.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     if request.method == 'POST':
         try:
             contact = get_object_or_404(Contact, id=contact_id)
@@ -122,20 +182,46 @@ def delete_contact(request, contact_id):
             return JsonResponse({'success': False, 'error': str(e)})
     else:
         return JsonResponse({'success': False, 'error': 'Invalid request method'})
-    
 
-def render_email(request, contact_id):
+
+def compose_email_view(request, contact_id):
+    """Renders the email composition template for a specific contact.
+    
+    Args:
+        request: Django request object.
+        contact_id: Primary key of the Contact.
+    
+    Returns:
+        HttpResponse: Rendered email.html template with contact context.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     contact = get_object_or_404(Contact, pk=contact_id)
     return render(request, "email.html", {'contact': contact})
 
-def email_email(request, contact_id):
-# in prod move this to the actual company number and move it to Mailgun
+
+def send_email_view(request, contact_id):
+    """Sends an email to a contact and logs the communication.
+    
+    Sends email via Django's send_mail, creates a database record of the sent
+    email, and updates lead status from 'New' to 'Contacted' if applicable.
+    
+    Args:
+        request: Django request object with subject and message POST data.
+        contact_id: Primary key of the Contact to email.
+    
+    Returns:
+        JsonResponse: Success/failure status, message, and redirect URL.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     if request.method == "POST":
         try:
             contact = get_object_or_404(Contact, pk=contact_id)
             recip_email = contact.email
             
-            # Validate required fields
             subject = request.POST.get('subject')
             message = request.POST.get('message')
             from_email = recip_email
@@ -146,7 +232,6 @@ def email_email(request, contact_id):
                     'error': 'Subject and message are required'
                 })
             
-            # Send email
             sent = send_mail(
                 subject=subject,
                 message=message,
@@ -170,17 +255,15 @@ def email_email(request, contact_id):
                 if up_dog == "New":
                     contact.lead_class = "Contacted"
                     contact.save()
-            # No need to call emails.save() after objects.create()
             print("Saved the sent email to the database")
 
             return JsonResponse({
                 'success': True, 
                 'message': 'Text sent successfully',
-                'redirect': '/index'  # Include redirect URL in the JSON response
+                'redirect': '/index'
             })
             
         except Exception as e:
-            # Log the error for debugging
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Email sending error: {str(e)}")
@@ -195,11 +278,41 @@ def email_email(request, contact_id):
             'error': 'Invalid request method'
         })
 
-def render_sms(request, contact_id):
+
+def compose_sms_view(request, contact_id):
+    """Renders the SMS composition template for a specific contact.
+    
+    Args:
+        request: Django request object.
+        contact_id: Primary key of the Contact.
+    
+    Returns:
+        HttpResponse: Rendered message.html template with contact context.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     contact = get_object_or_404(Contact, pk=contact_id)
     return render(request, "message.html", {'contact': contact})
 
-def sms_sms(request, contact_id):
+
+def send_sms_message_view(request, contact_id):
+    """Sends an SMS to a contact and logs the communication.
+    
+    Uses SMS service to send message, creates a database record, and updates
+    lead status from 'New' to 'Contacted' if applicable.
+    
+    Args:
+        request: Django request object with body POST data.
+        contact_id: Primary key of the Contact to message.
+    
+    Returns:
+        JsonResponse: Success/failure status, message, and redirect URL on POST.
+        HttpResponse: Rendered message.html template on GET.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     company_number = "0424854899"
     contact = get_object_or_404(Contact, pk=contact_id)
     
@@ -252,25 +365,47 @@ def sms_sms(request, contact_id):
                 'error': f'Failed to send SMS: {str(e)}'
             })
     
-    else:  # Handle GET request
+    else:
         return render(request, "message.html", {'contact': contact})
     
 
-def ahhh(request):
-    # Cant think of a better name right now
-    # This just returns all the sent messages for the page
-    emails = sent_emails.objects.all().order_by('-sent_at')  # Order by most recent first
-    # The key in the context dictionary must match the variable name in the template
+def sent_emails_history_view(request):
+    """Displays all sent emails ordered by most recent first.
+    
+    Renders index.html with a list of all sent email communications
+    for viewing email history across all contacts.
+    
+    Args:
+        request: Django request object.
+    
+    Returns:
+        HttpResponse: Rendered index.html template with emails context.
+    """
+    emails = sent_emails.objects.all().order_by('-sent_at')
     return render(request, 'index.html', {'emails': emails})
 
 
-
-def contact_detail(request, contact_id):
+def contact_detail_form_view(request, contact_id):
+    """Alternative detailed contact view using Django forms.
+    
+    Displays contact details with a pre-populated ContactForm and handles
+    both AJAX and standard form submissions.
+    
+    Args:
+        request: Django request object.
+        contact_id: Primary key of the Contact to display/edit.
+    
+    Returns:
+        HttpResponse: Rendered contact_detail.html template or JSON response
+                     for AJAX requests.
+    
+    Raises:
+        Http404: If contact with given ID does not exist.
+    """
     contact = get_object_or_404(Contact, pk=contact_id)
     sent_emails = sent_emails.objects.filter(contact=contact).order_by('-sent_at')
     
     if request.method == 'POST':
-        # Handle form submission
         form = ContactForm(request.POST, instance=contact)
         if form.is_valid():
             form.save()

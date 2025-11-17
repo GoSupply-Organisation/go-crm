@@ -3,32 +3,29 @@ from .views import *
 
 urlpatterns = [
     # Renders the index page with the list of contacts
-    path('index/', index_func, name='home'),
+    path('index/', contact_list_view, name='home'),
 
     # Paths for adding, updating, deleting, and viewing more info about contacts
-    path('add/', adding_contact, name='adding_contact'),
+    path('add/', create_contact_view, name='adding_contact'),
 
     # Updates to include update contact by id
-    path('update/<int:contact_id>/', update_contact, name='update_contact'),  # Added contact_id parameter
+    path('update/<int:contact_id>/', edit_contact_view, name='update_contact'),
 
     # Delete contact by id
-    path('delete/<int:contact_id>/', delete_contact, name='delete_contact'),  # Added contact_id parameter
+    path('delete/<int:contact_id>/', delete_contact_view, name='delete_contact'),
 
     # More info about contact by id
-    path('moreinfo/<int:contact_id>/', more_info, name='moreinfo_contact'),
+    path('moreinfo/<int:contact_id>/', contact_detail_view, name='moreinfo_contact'),
     
-    # Not entirely sure
-    path('contact/<int:contact_id>/', contact_detail, name='api_contact_detail'),
+    # Displays detailed contact information and handles quick edit
+    path('contact/<int:contact_id>/', contact_detail_form_view, name='api_contact_detail'),
 
     # Renders and allows emails to be sent
-    path('email/<int:contact_id>/', render_email, name='render_email'),
-    path('send-email/<int:contact_id>/', email_email, name='email_email'),
-    path('already_sent_emails/', ahhh, name='already_sent_emails'),
+    path('email/<int:contact_id>/', compose_email_view, name='render_email'),
+    path('send-email/<int:contact_id>/', send_email_view, name='email_email'),
+    path('already_sent_emails/', sent_emails_history_view, name='already_sent_emails'),
 
     # Renders and allows SMS to be sent
-    path('email/<int:contact_id>/', render_sms, name='render_email'),
-    path("send-sms/<int:contact_id>/", sms_sms, name="send_sms"),
-
-    
-
+    path('email/<int:contact_id>/', compose_sms_view, name='render_email'),
+    path('send-sms/<int:contact_id>/', send_sms_message_view, name='send_sms'),
 ]
