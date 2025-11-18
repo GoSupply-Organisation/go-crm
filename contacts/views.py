@@ -37,6 +37,7 @@ def contact_list_view(request):
     if search_query:
         contacts = contacts.filter(
             Q(Full_name__icontains=search_query) |
+            Q(company__icontains=search_query) |
             Q(email__icontains=search_query) |
             Q(phone_number__icontains=search_query)
         )
