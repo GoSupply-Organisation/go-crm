@@ -1,197 +1,158 @@
-#!/usr/bin/env python3
-"""
-Swarm-style Medical Supplies Research System
-
-This system uses the Swarm pattern where agents can intelligently hand off tasks
-to specialized agents based on their capabilities, rather than following a fixed sequence.
-"""
-
-import asyncio
-import os
-from typing import Dict, Any, List
-from dotenv import load_dotenv
-from prompting import *
-from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.conditions import TextMentionTermination, HandoffTermination
-from autogen_agentchat.messages import HandoffMessage
-from autogen_agentchat.teams import Swarm
-from autogen_agentchat.ui import Console
-from autogen_core import CancellationToken
-from autogen_ext.models.openai import OpenAIChatCompletionClient
-from autogen_core.models import ModelFamily
-from mcp import StdioServerParameters
-from autogen_ext_mcp.tools import get_tools_from_mcp_server
-
-load_dotenv()
 
 
-async def main():
-    """Main function to run the swarm research system"""
-    
-    # Load API keys
-    serp = os.getenv("SERPER_API_KEY")
-    fire = os.getenv("FIRECRAWL_API_KEY")
-    
-    # Set up MCP servers for different search capabilities
-    serper_server = StdioServerParameters(
-        command="npx",
-        args=["-y", "serper-search-scrape-mcp-server"],
-        env={"SERPER_API_KEY": str(serp)} if serp else {},
-    )
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
+from IPython.display import Image, display
+from pydantic import BaseModel, Field
+from typing import Annotated, List
+import operator
+from langchain.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from langgraph.types import Send
+from langchain_mcp_adapters.client import MultiServerMCPClient  
+from langchain.messages import AnyMessage
 
-    duck_server = StdioServerParameters(
-        command="uvx",
-        args=["duckduckgo-mcp-server"],
-    )
 
-    firecrawl_server = StdioServerParameters(
-        command="npx",
-        args=["-y", "firecrawl-mcp"],
-        env={"FIRECRAWL_API_KEY": str(fire)} if fire else {},
-    )
-
-    # Initialize the model client
-    model_client = OpenAIChatCompletionClient(
-        model="qwen3-4b-instruct-2507",
-        base_url="http://127.0.0.1:1234/v1",
-        api_key="sk-xxxx",
-        model_info={
-            "vision": True,
-            "function_calling": True,
-            "json_output": False,
-            "family": ModelFamily.UNKNOWN,
-            "structured_output": False,
+client = MultiServerMCPClient({  
+        "search": {
+            "transport": "stdio",  # Local subprocess communication
+            "command": "uvx",
+            "args": ["duckduckgo-mcp-server"],
         },
+})
+
+llm = ChatOpenAI(
+    model ="local-llm",
+    api_key="sk-xxxx",
+    base_url="http://127.0.0.1:1234/v1"
+)
+async def main():
+    tools = await client.get_tools()  
+    tools_by_name = {tool.name: tool for tool in tools}
+    model_with_tools = llm.bind_tools(tools)
+
+    # Schema for structured output to use in planning
+    class Section(BaseModel):
+        name: str = Field(
+            description="Name for this section of the report.",
+        )
+        description: str = Field(
+            description="Brief overview of the main topics and concepts to be covered in this section.",
+        )
+
+
+    class Sections(BaseModel):
+        sections: List[Section] = Field(
+            description="Sections of the report.",
+        )
+
+    # Augment the LLM with schema for structured output
+    planner = llm.with_structured_output(Sections)
+
+    # Graph state
+    class State(TypedDict):
+        topic: str  # Report topic
+        messages: Annotated[list[AnyMessage], operator.add]
+        llm_calls: int
+        sections: list[Section]  # List of report sections
+        completed_sections: Annotated[
+            list, operator.add
+        ]  # All workers write to this key in parallel
+        final_report: str  # Final report
+
+
+    # Worker state
+    class WorkerState(TypedDict):
+        section: Section
+        completed_sections: Annotated[list, operator.add]
+        messages: Annotated[list[AnyMessage], operator.add]
+        llm_calls: int
+
+
+    # Nodes
+    def orchestrator(state: State):
+        """Orchestrator that generates a plan for the report"""
+
+        # Generate queries
+        report_sections = planner.invoke(
+            [
+                SystemMessage(content="Generate a plan for the report."),
+                HumanMessage(content=f"Here is the report topic: {state['topic']}"),
+            ]
+        )
+
+        return {"sections": report_sections.sections}
+
+
+    def llm_call(state: WorkerState):
+        """Worker writes a section of the report"""
+
+        # Generate section
+        section = model_with_tools.invoke(
+            [
+                SystemMessage(
+                    content="Write a report section following the provided name and description. Include no preamble for each section. Use markdown formatting."
+                ),
+                HumanMessage(
+                    content=f"Here is the section name: {state['section'].name} and description: {state['section'].description}"
+                ),
+            ]
+            + state["messages"]
+        )
+
+        # Write the updated section to completed sections
+        return {"completed_sections": [section.content]}
+
+
+    def synthesizer(state: State):
+        """Synthesize full report from sections"""
+
+        # List of completed sections
+        completed_sections = state["completed_sections"]
+
+        # Format completed section to str to use as context for final sections
+        completed_report_sections = "\n\n---\n\n".join(completed_sections)
+
+        return {"final_report": completed_report_sections}
+
+
+    # Conditional edge function to create llm_call workers that each write a section of the report
+    def assign_workers(state: State):
+        """Assign a worker to each section in the plan"""
+
+        # Kick off section writing in parallel via Send() API
+        return [Send("llm_call", {"section": s, "messages": []}) for s in state["sections"]]
+
+
+
+    # Build workflow
+    orchestrator_worker_builder = StateGraph(State)
+
+    # Add the nodes
+    orchestrator_worker_builder.add_node("orchestrator", orchestrator)
+    orchestrator_worker_builder.add_node("llm_call", llm_call)
+    orchestrator_worker_builder.add_node("synthesizer", synthesizer)
+
+    # Add edges to connect nodes
+    orchestrator_worker_builder.add_edge(START, "orchestrator")
+    orchestrator_worker_builder.add_conditional_edges(
+        "orchestrator", assign_workers, ["llm_call"]
     )
+    orchestrator_worker_builder.add_edge("llm_call", "synthesizer")
+    orchestrator_worker_builder.add_edge("synthesizer", END)
 
-    # model_client = OpenAIChatCompletionClient(
-    #     model="gpt-4.1",
-    #     api_key=os.getenv("OPENAI_API_KEY"),
-    # )
+    # Compile the workflow
+    orchestrator_worker = orchestrator_worker_builder.compile()
 
-    # Get tools from MCP servers
-    print("Loading research tools...")
-    serper_tools = await get_tools_from_mcp_server(serper_server) if serp else []
-    duck_tools = await get_tools_from_mcp_server(duck_server)
-    firecrawl_tools = await get_tools_from_mcp_server(firecrawl_server) if fire else []
-    
-    print(f"Loaded {len(serper_tools)} serper tools, {len(duck_tools)} duck tools, {len(firecrawl_tools)} firecrawl tools")
+    # Show the workflow
+    display(Image(orchestrator_worker.get_graph().draw_mermaid_png()))
 
-    # Create the coordinator/planner agent
-    coordinator = AssistantAgent(
-        "coordinator",
-        model_client=model_client,
-        handoffs=["blackstar", "duck_researcher", "firecrawl_researcher", "critic", "synthesis_agent", "user"],
-        system_message=COORDINATOR_PROMPT,
-    )
+    # Invoke
+    state = orchestrator_worker.invoke({"topic": "Research and Create a report on LLM scaling laws"})
 
-    # Create specialized research agents
-    serper_researcher = AssistantAgent(
-        "blackstar",
-        model_client=model_client,
-        handoffs=["coordinator"],
-        tools=duck_tools,
-        reflect_on_tool_use=True,
-        model_client_stream=True,
-        system_message=RESEARCH_PROMPT,
-    )
-
-    duck_researcher = AssistantAgent(
-        "duck_researcher", 
-        model_client=model_client,
-        handoffs=["coordinator"],
-        tools=duck_tools,
-        reflect_on_tool_use=True,
-        model_client_stream=True,
-        system_message=RESEARCH_PROMPT,
-    )
-
-    firecrawl_researcher = AssistantAgent(
-        "firecrawl_researcher",
-        model_client=model_client,
-        handoffs=["coordinator"],
-        tools=duck_tools,
-        reflect_on_tool_use=True,
-        model_client_stream=True,
-        system_message=RESEARCH_PROMPT,
-    )
-
-    # Create critic agent for quality assurance
-    critic = AssistantAgent(
-        "critic",
-        model_client=model_client,
-        handoffs=["coordinator"],
-        reflect_on_tool_use=True,
-        model_client_stream=True,
-        system_message=CRITIC_PROMPT,
-    )
-
-    # Create synthesis agent for final report
-    synthesis_agent = AssistantAgent(
-        "synthesis_agent",
-        model_client=model_client,
-        handoffs=["coordinator"],
-        reflect_on_tool_use=True,
-        model_client_stream=True,
-        system_message=SYNTHESIS_PROMPT,
-    )
-
-    # Define termination conditions
-# More specific termination conditions
-    termination = (
-        TextMentionTermination("FINAL_REPORT_COMPLETE") | 
-        TextMentionTermination("RESEARCH_COMPLETE") |
-        TextMentionTermination("TASK_COMPLETE") |
-        TextMentionTermination("APPROVE")
-    )
-
-    # Create the swarm team
-    research_team = Swarm(
-        participants=[coordinator, serper_researcher, duck_researcher, firecrawl_researcher, critic, synthesis_agent],
-        termination_condition=termination,
-    )
-
-    # Define the research task
-    task = """Research and aggregate data on the most desperate hospitals, aged care units, and telehealth services in Australia that need medical supplies. 
-
-        This research is for a medical supplies company that specializes in speed and excellent customer service. Focus on:
-
-        1. **Hospitals with urgent medical supply needs** - especially those experiencing shortages
-        2. **Aged care facilities requiring medical equipment** - prioritize those with recent supply chain issues  
-        3. **Telehealth services needing medical supplies** - focus on rapid growth and service expansion
-
-        Research sources should include:
-        - LinkedIn company updates and hiring patterns
-        - Company websites and press releases  
-        - News articles about supply shortages
-        - Healthcare industry publications
-        - Government health department reports
-        - Social media mentions of supply issues
-
-        For each facility found, gather:
-        - Facility name and location
-        - Specific medical supplies needed
-        - Contact information (phone, email, key personnel)
-        - Business size and patient volume
-        - Evidence of supply urgency or shortage
-        - Any mentions of preferring fast, reliable suppliers
-
-        Present findings in a structured format suitable for sales outreach."""
-
-    print("Starting Swarm research system...")
-    print("=" * 60)
-    
-    try:
-        # Run the swarm research system
-        await Console(research_team.run_stream(task=task))
-        
-    except Exception as e:
-        print(f"Error during research: {e}")
-        
-    finally:
-        # Clean up model client
-        await model_client.close()
-
+    print(state["final_report"])
 
 if __name__ == "__main__":
+    import asyncio
+
     asyncio.run(main())
