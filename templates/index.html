@@ -487,7 +487,7 @@
 
                             
                             <div class="contact-field">
-                                <strong>Name:</strong> {% if contact.company %}{{ contact.company }}{% else %}{{ contact.Full_name }}{% endif %}
+                                <strong>Name:</strong> {% if contact.company and contact.company|length > 0 %}{{ contact.company }}{% else %}{{ contact.Full_name }}{% endif %}
                             </div>
                             <div class="contact-field">
                                 <strong>Email:</strong> {{ contact.email }}

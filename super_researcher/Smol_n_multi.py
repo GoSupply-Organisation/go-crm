@@ -1,59 +1,45 @@
+#!/usr/bin/env python3
+"""
+Swarm-style Medical Supplies Research System
+
+This system uses the Swarm pattern where agents can intelligently hand off tasks
+to specialized agents based on their capabilities, rather than following a fixed sequence.
+"""
+
 import asyncio
 import os
+from typing import Dict, Any, List
 from dotenv import load_dotenv
-
+from prompting import *
 from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.base import TaskResult
-from autogen_agentchat.conditions import TextMentionTermination
-from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.conditions import TextMentionTermination, HandoffTermination
+from autogen_agentchat.messages import HandoffMessage
+from autogen_agentchat.teams import Swarm
 from autogen_agentchat.ui import Console
 from autogen_core import CancellationToken
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core.models import ModelFamily
-from autogen_ext_mcp.tools import get_tools_from_mcp_server
 from mcp import StdioServerParameters
+from autogen_ext_mcp.tools import get_tools_from_mcp_server
+
+load_dotenv()
 
 
-async def main() -> TaskResult:
-    """
-    Orchestrates a multi-agent research team to identify desperate healthcare facilities in Australia
-    requiring urgent medical supplies, leveraging external tools for data aggregation.
-
-    This function:
-    1. Loads environment variables for API keys.
-    2. Initializes MCP servers for search and scraping tools (Serper, DuckDuckGo, Firecrawl).
-    3. Configures a local LLM client (Qwen3-4B-Instruct).
-    4. Creates five specialized agents: four researchers and one critic.
-    5. Uses a RoundRobinGroupChat to coordinate agent collaboration.
-    6. Terminates when the critic agent explicitly approves the output ("APPROVE").
-    7. Runs the task and returns the final result.
-
-    Returns:
-        TaskResult: The final outcome of the multi-agent research task.
-
-    Raises:
-        ValueError: If required API keys (SERPER_API_KEY, FIRECRAWL_API_KEY) are not set.
-    """
-    # Load environment variables
-    load_dotenv()
-
-    # Retrieve and validate API keys
-    serper_api_key = os.getenv("SERPER_API_KEY")
-    firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
-
-    if not serper_api_key:
-        raise ValueError("Environment variable 'SERPER_API_KEY' is not set.")
-    if not firecrawl_api_key:
-        raise ValueError("Environment variable 'FIRECRAWL_API_KEY' is not set.")
-
-    # Initialize MCP server configurations for external tools
+async def main():
+    """Main function to run the swarm research system"""
+    
+    # Load API keys
+    serp = os.getenv("SERPER_API_KEY")
+    fire = os.getenv("FIRECRAWL_API_KEY")
+    
+    # Set up MCP servers for different search capabilities
     serper_server = StdioServerParameters(
         command="npx",
         args=["-y", "serper-search-scrape-mcp-server"],
-        env={"SERPER_API_KEY": serper_api_key},
+        env={"SERPER_API_KEY": str(serp)} if serp else {},
     )
 
-    duckduckgo_server = StdioServerParameters(
+    duck_server = StdioServerParameters(
         command="uvx",
         args=["duckduckgo-mcp-server"],
     )
@@ -61,11 +47,11 @@ async def main() -> TaskResult:
     firecrawl_server = StdioServerParameters(
         command="npx",
         args=["-y", "firecrawl-mcp"],
-        env={"FIRECRAWL_API_KEY": firecrawl_api_key},
+        env={"FIRECRAWL_API_KEY": str(fire)} if fire else {},
     )
 
-    # Initialize the LLM client (local Qwen3-4B-Instruct)
-    llm_client = OpenAIChatCompletionClient(
+    # Initialize the model client
+    model_client = OpenAIChatCompletionClient(
         model="qwen3-4b-instruct-2507",
         base_url="http://127.0.0.1:1234/v1",
         api_key="sk-xxxx",
@@ -78,111 +64,133 @@ async def main() -> TaskResult:
         },
     )
 
-    # Load tools from MCP servers asynchronously
-    serper_tools = await get_tools_from_mcp_server(serper_server)
-    duckduckgo_tools = await get_tools_from_mcp_server(duckduckgo_server)
-    firecrawl_tools = await get_tools_from_mcp_server(firecrawl_server)
+    # model_client = OpenAIChatCompletionClient(
+    #     model="gpt-4.1",
+    #     api_key=os.getenv("OPENAI_API_KEY"),
+    # )
 
-    # Define agent roles and their tool sets
-    primary_researcher = AssistantAgent(
-        name="primary_researcher",
-        model_client=llm_client,
-        tools=serper_tools,
-        reflect_on_tool_use=True,
-        model_client_stream=True,
-        system_message=(
-            "You are a primary research agent tasked with gathering initial data on healthcare "
-            "facilities in Australia in urgent need of medical supplies. Use Serper to find "
-            "company websites, LinkedIn profiles, and news articles."
-        ),
+    # Get tools from MCP servers
+    print("Loading research tools...")
+    serper_tools = await get_tools_from_mcp_server(serper_server) if serp else []
+    duck_tools = await get_tools_from_mcp_server(duck_server)
+    firecrawl_tools = await get_tools_from_mcp_server(firecrawl_server) if fire else []
+    
+    print(f"Loaded {len(serper_tools)} serper tools, {len(duck_tools)} duck tools, {len(firecrawl_tools)} firecrawl tools")
+
+    # Create the coordinator/planner agent
+    coordinator = AssistantAgent(
+        "coordinator",
+        model_client=model_client,
+        handoffs=["blackstar", "duck_researcher", "firecrawl_researcher", "critic", "synthesis_agent", "user"],
+        system_message=COORDINATOR_PROMPT,
     )
 
-    secondary_researcher = AssistantAgent(
-        name="secondary_researcher",
-        model_client=llm_client,
-        tools=duckduckgo_tools,
+    # Create specialized research agents
+    serper_researcher = AssistantAgent(
+        "blackstar",
+        model_client=model_client,
+        handoffs=["coordinator"],
+        tools=duck_tools,
         reflect_on_tool_use=True,
         model_client_stream=True,
-        system_message=(
-            "You are a secondary research agent. Use DuckDuckGo to cross-reference and expand "
-            "on findings from the primary researcher. Focus on uncovering lesser-known facilities "
-            "and community health centers."
-        ),
+        system_message=RESEARCH_PROMPT,
     )
 
-    tertiary_researcher = AssistantAgent(
-        name="tertiary_researcher",
-        model_client=llm_client,
-        tools=firecrawl_tools,
+    duck_researcher = AssistantAgent(
+        "duck_researcher", 
+        model_client=model_client,
+        handoffs=["coordinator"],
+        tools=duck_tools,
         reflect_on_tool_use=True,
         model_client_stream=True,
-        system_message=(
-            "You are a tertiary research agent. Use Firecrawl to extract detailed content from "
-            "websites of hospitals, aged care units, and telehealth providers. Prioritize pages "
-            "with contact info, supply requests, or recent updates."
-        ),
+        system_message=RESEARCH_PROMPT,
     )
 
-    quaternary_researcher = AssistantAgent(
-        name="quaternary_researcher",
-        model_client=llm_client,
-        tools=firecrawl_tools,
+    firecrawl_researcher = AssistantAgent(
+        "firecrawl_researcher",
+        model_client=model_client,
+        handoffs=["coordinator"],
+        tools=duck_tools,
         reflect_on_tool_use=True,
         model_client_stream=True,
-        system_message=(
-            "You are a quaternary research agent. Focus on identifying supply chain bottlenecks, "
-            "staffing shortages, and public appeals from Australian healthcare providers. "
-            "Highlight urgency and customer service needs."
-        ),
+        system_message=RESEARCH_PROMPT,
     )
 
-    critic_agent = AssistantAgent(
-        name="critic_agent",
-        model_client=llm_client,
+    # Create critic agent for quality assurance
+    critic = AssistantAgent(
+        "critic",
+        model_client=model_client,
+        handoffs=["coordinator"],
         reflect_on_tool_use=True,
         model_client_stream=True,
-        system_message=(
-            "You are a critical review agent. Analyze the collective findings of the researchers. "
-            "Ensure data is accurate, non-redundant, and prioritized by urgency. Only respond with "
-            "'APPROVE' when the aggregated report is comprehensive, actionable, and meets quality "
-            "standards. Otherwise, provide constructive feedback."
-        ),
+        system_message=CRITIC_PROMPT,
     )
 
-    # Define termination condition: task ends when critic says "APPROVE"
-    termination_condition = TextMentionTermination("APPROVE")
+    # Create synthesis agent for final report
+    synthesis_agent = AssistantAgent(
+        "synthesis_agent",
+        model_client=model_client,
+        handoffs=["coordinator"],
+        reflect_on_tool_use=True,
+        model_client_stream=True,
+        system_message=SYNTHESIS_PROMPT,
+    )
 
-    # Create team with all agents in round-robin order
-    research_team = RoundRobinGroupChat(
-        agents=[
-            primary_researcher,
-            secondary_researcher,
-            tertiary_researcher,
-            quaternary_researcher,
-            critic_agent,
-        ],
-        termination_condition=termination_condition,
+    # Define termination conditions
+# More specific termination conditions
+    termination = (
+        TextMentionTermination("FINAL_REPORT_COMPLETE") | 
+        TextMentionTermination("RESEARCH_COMPLETE") |
+        TextMentionTermination("TASK_COMPLETE") |
+        TextMentionTermination("APPROVE")
+    )
+
+    # Create the swarm team
+    research_team = Swarm(
+        participants=[coordinator, serper_researcher, duck_researcher, firecrawl_researcher, critic, synthesis_agent],
+        termination_condition=termination,
     )
 
     # Define the research task
-    research_task = """
-    Aggregate data using the tools available for the most desperate hospitals, aged care units, 
-    and telehealth services in Australia that are in urgent need of medical supplies. 
-    This medical supplies company emphasizes speed and exceptional customer service.
+    task = """Research and aggregate data on the most desperate hospitals, aged care units, and telehealth services in Australia that need medical supplies. 
 
-    Search LinkedIn, company websites, news articles, public health bulletins, and any other 
-    relevant sources. Prioritize facilities with public appeals, staffing shortages, or supply gaps. 
-    Compile a prioritized list with contact details, specific needs, and urgency indicators.
-    """
+        This research is for a medical supplies company that specializes in speed and excellent customer service. Focus on:
 
-    # Run the team and capture the result
-    console = Console(research_team)
-    result = await console.run_stream(task=research_task)
+        1. **Hospitals with urgent medical supply needs** - especially those experiencing shortages
+        2. **Aged care facilities requiring medical equipment** - prioritize those with recent supply chain issues  
+        3. **Telehealth services needing medical supplies** - focus on rapid growth and service expansion
 
-    # Close the LLM client gracefully
-    await llm_client.close()
+        Research sources should include:
+        - LinkedIn company updates and hiring patterns
+        - Company websites and press releases  
+        - News articles about supply shortages
+        - Healthcare industry publications
+        - Government health department reports
+        - Social media mentions of supply issues
 
-    return result
+        For each facility found, gather:
+        - Facility name and location
+        - Specific medical supplies needed
+        - Contact information (phone, email, key personnel)
+        - Business size and patient volume
+        - Evidence of supply urgency or shortage
+        - Any mentions of preferring fast, reliable suppliers
+
+        Present findings in a structured format suitable for sales outreach."""
+
+    print("Starting Swarm research system...")
+    print("=" * 60)
+    
+    try:
+        # Run the swarm research system
+        await Console(research_team.run_stream(task=task))
+        
+    except Exception as e:
+        print(f"Error during research: {e}")
+        
+    finally:
+        # Clean up model client
+        await model_client.close()
 
 
 if __name__ == "__main__":
