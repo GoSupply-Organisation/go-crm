@@ -50,7 +50,8 @@ INSTALLED_APPS = [
 
     # Created Apps
     "contacts",
-    "super_researcher"
+    "super_researcher",
+    "todo"
 ]
 
 

@@ -1,135 +1,116 @@
-from typing import Annotated
-from langchain_core.messages import BaseMessage, HumanMessage
-from langchain_openai import ChatOpenAI
-from langchain.agents import create_agent
-from langgraph.graph import MessagesState, END
-from langgraph.types import Command
 from typing import Literal
 
-from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_core.tools import tool
-from langchain_experimental.utilities import PythonREPL
-from langgraph.graph import StateGraph, START
-from langchain_mcp_adapters.client import MultiServerMCPClient  
+from pydantic import BaseModel, Field
+from rich.prompt import Prompt
 from dotenv import load_dotenv
-import os
-
+from pydantic_ai.models.groq import GroqModel, GroqModelSettings
+from pydantic_ai import Agent, ModelMessage, RunContext, RunUsage, UsageLimits
 load_dotenv()
-OPENAIAPI = os.getenv("OPENAI_API_KEY")
+import os
+API = os.getenv("OPENAI_API_KEY")   
 
-client = MultiServerMCPClient({  
-        "search": {
-            "transport": "stdio",  # Local subprocess communication
-            "command": "uvx",
-            "args": ["duckduckgo-mcp-server"],
-        },
-})
+class FlightDetails(BaseModel):
+    flight_number: str
 
-async def main():
-    llm = ChatOpenAI(
-        model="gpt-4.1",
-        api_key=OPENAIAPI,
-    )
 
-    tools = await client.get_tools()  
+class Failed(BaseModel):
+    """Unable to find a satisfactory choice."""
 
-    def make_system_prompt(suffix: str) -> str:
-        return (
-            "You are a helpful AI assistant, collaborating with other assistants."
-            " Use the provided tools to progress towards answering the question."
-            " If you are unable to fully answer, that's OK, another assistant with different tools "
-            " will help where you left off. Execute what you can to make progress."
-            " If you or any of the other assistants have the final answer or deliverable,"
-            " prefix your response with FINAL ANSWER so the team knows to stop."
-            f"\n{suffix}"
+
+model = GroqModel(
+    model_name="gpt-5",
+    provider = 
+
+flight_search_agent = Agent[None, FlightDetails | Failed](  
+    'openai:gpt-5',
+    output_type=FlightDetails | Failed,  # type: ignore
+    system_prompt=(
+        'Use the "flight_search" tool to find a flight '
+        'from the given origin to the given destination.'
+    ),
+)
+
+
+@flight_search_agent.tool  
+async def flight_search(
+    ctx: RunContext[None], origin: str, destination: str
+) -> FlightDetails | None:
+    # in reality, this would call a flight search API or
+    # use a browser to scrape a flight search website
+    return FlightDetails(flight_number='AK456')
+
+
+usage_limits = UsageLimits(request_limit=15)  
+
+
+async def find_flight(usage: RunUsage) -> FlightDetails | None:  
+    message_history: list[ModelMessage] | None = None
+    for _ in range(3):
+        prompt = Prompt.ask(
+            'Where would you like to fly from and to?',
         )
-
-    def get_next_node(last_message: BaseMessage, goto: str):
-        if "FINAL ANSWER" in last_message.content:
-            # Any agent decided the work is done
-            return END
-        return goto
-
-    # Research agent and node
-    research_agent = create_agent(
-        llm,
-        tools=tools,  # Fixed: removed extra brackets
-        system_prompt=make_system_prompt(
-            "You can only do research. You have access to a search tool use it approriately. "
-            "You are working with a chart generator colleague."
-        ),
-    )
-
-    def research_node(
-        state: MessagesState,
-    ) -> Command[Literal["researcher1", END]]:
-        result = research_agent.invoke(state)
-        goto = get_next_node(result["messages"][-1], "researcher1")
-        # wrap in a human message, as not all providers allow
-        # AI message at the last position of the input messages list
-        result["messages"][-1] = HumanMessage(
-            content=result["messages"][-1].content, name="researcher"
+        result = await flight_search_agent.run(
+            prompt,
+            message_history=message_history,
+            usage=usage,
+            usage_limits=usage_limits,
         )
-        return Command(
-            update={
-                # share internal message history of research agent with other agents
-                "messages": result["messages"],
-            },
-            goto=goto,
+        if isinstance(result.output, FlightDetails):
+            return result.output
+        else:
+            message_history = result.all_messages(
+                output_tool_return_content='Please try again.'
+            )
+
+
+class SeatPreference(BaseModel):
+    row: int = Field(ge=1, le=30)
+    seat: Literal['A', 'B', 'C', 'D', 'E', 'F']
+
+
+# This agent is responsible for extracting the user's seat selection
+seat_preference_agent = Agent[None, SeatPreference | Failed](  
+    'openai:gpt-5',
+    output_type=SeatPreference | Failed,  # type: ignore
+    system_prompt=(
+        "Extract the user's seat preference. "
+        'Seats A and F are window seats. '
+        'Row 1 is the front row and has extra leg room. '
+        'Rows 14, and 20 also have extra leg room. '
+    ),
+)
+
+
+async def find_seat(usage: RunUsage) -> SeatPreference:  
+    message_history: list[ModelMessage] | None = None
+    while True:
+        answer = Prompt.ask('What seat would you like?')
+
+        result = await seat_preference_agent.run(
+            answer,
+            message_history=message_history,
+            usage=usage,
+            usage_limits=usage_limits,
         )
+        if isinstance(result.output, SeatPreference):
+            return result.output
+        else:
+            print('Could not understand seat preference. Please try again.')
+            message_history = result.all_messages()
 
-    # Chart generator agent and node
-    # NOTE: THIS PERFORMS ARBITRARY CODE EXECUTION, WHICH CAN BE UNSAFE WHEN NOT SANDBOXED
-    research1_agent = create_agent(
-        llm,
-        tools=tools,  # Fixed: removed extra brackets
-        system_prompt=make_system_prompt(
-            "You can only generate charts. You are working with a researcher colleague."
-        ),
-    )
 
-    def research1_node(
-        state: MessagesState
-    ) -> Command[Literal["researcher", END]]:
-        result = research1_agent.invoke(state)
-        goto = get_next_node(result["messages"][-1], "researcher")
-        # wrap in a human message, as not all providers allow
-        # AI message at the last position of the input messages list
-        result["messages"][-1] = HumanMessage(
-            content=result["messages"][-1].content, name="researcher1"
-        )
-        return Command(
-            update={
-                # share internal message history of chart agent with other agents
-                "messages": result["messages"],
-            },
-            goto=goto,
-        )
+async def main():  
+    usage: RunUsage = RunUsage()
 
-    workflow = StateGraph(MessagesState)
-    workflow.add_node("researcher", research_node)
-    workflow.add_node("researcher1", research1_node)
+    opt_flight_details = await find_flight(usage)
+    if opt_flight_details is not None:
+        print(f'Flight found: {opt_flight_details.flight_number}')
+        #> Flight found: AK456
+        seat_preference = await find_seat(usage)
+        print(f'Seat preference: {seat_preference}')
+        #> Seat preference: row=1 seat='A'
 
-    workflow.add_edge(START, "researcher")
-    graph = workflow.compile()
 
-    events = graph.stream(
-        {
-            "messages": [
-                (
-                    "user",
-                    "First, get the UK's GDP over the past 5 years, then make a line chart of it. "
-                    "Once you make the chart, finish.",
-                )
-            ],
-        },
-        # Maximum number of steps to take in the graph
-        {"recursion_limit": 150},
-    )
-    for s in events:
-        print(s)
-        print("----")
-
-if __name__ == "__main__":
-    import asyncio
+import asyncio
+if __name__ == '__main__':
     asyncio.run(main())
