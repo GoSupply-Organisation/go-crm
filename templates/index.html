@@ -11,7 +11,7 @@
             background-color: #f5f5f5;
         }
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 8px;
@@ -22,6 +22,7 @@
             display: flex;
             border-bottom: 1px solid #ddd;
             background: #f8f9fa;
+            overflow-x: auto;
         }
         .tab {
             padding: 15px 25px;
@@ -33,6 +34,8 @@
             margin-right: 5px;
             position: relative;
             top: 1px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .tab.active {
             background: white;
@@ -387,6 +390,226 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* New Styles for Communication Logs Tab */
+        .logs-container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .logs-filters {
+            flex: 0 0 250px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            height: fit-content;
+        }
+        
+        .logs-list {
+            flex: 1;
+        }
+        
+        .log-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .log-item.sms {
+            border-left-color: #28a745;
+        }
+        
+        .log-item.email {
+            border-left-color: #17a2b8;
+        }
+        
+        .log-item.failed {
+            border-left-color: #dc3545;
+        }
+        
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .log-type {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .log-type.sms {
+            background: #28a745;
+            color: white;
+        }
+        
+        .log-type.email {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .log-status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .log-status.sent {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .log-status.delivered {
+            background: #c3e6cb;
+            color: #155724;
+        }
+        
+        .log-status.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .log-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .log-details {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .log-detail {
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .log-detail strong {
+            color: #495057;
+        }
+        
+        .log-content {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .log-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .resend-btn {
+            padding: 5px 10px;
+            background: #6f42c1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .resend-btn:hover {
+            background: #5a2d91;
+        }
+        
+        .view-btn {
+            padding: 5px 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .view-btn:hover {
+            background: #0056b3;
+        }
+        
+        .filter-group-small {
+            margin-bottom: 15px;
+        }
+        
+        .filter-group-small label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .filter-group-small select,
+        .filter-group-small input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Export Button */
+        .export-btn {
+            display: inline-block;
+            margin: 15px 0;
+            padding: 10px 15px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .export-btn:hover {
+            background: #218838;
+        }
+
     </style>
 </head>
 <body>
@@ -396,6 +619,7 @@
         <div class="tabs">
             <div class="tab active" data-tab="contacts">Current Users</div>
             <div class="tab" data-tab="leads">AI Leads</div>
+            <div class="tab" data-tab="logs">Communication Logs</div>
         </div>
         <div class="filter-bar">
             <form method="GET" action="" class="filter-form">
@@ -467,6 +691,8 @@
                 {% endif %}
             </form>
         </div>
+        
+        <!-- Current Users Tab -->
         <div id="contacts" class="tab-content active">
             <h2>Current Leads</h2>
             {% if contacts %}
@@ -504,6 +730,7 @@
             <a href="{% url 'adding_contact' %}" class="add-btn">Add New User</a>
         </div>
 
+        <!-- AI Leads Tab -->
         <div id="leads" class="tab-content">
             <h2>AI Generated Leads <span class="ai-badge">AI</span></h2>
             
@@ -589,6 +816,152 @@
                 <div class="no-records">No AI leads have been generated yet. Click the button above to start generating leads.</div>
             {% endif %}
         </div>
+
+        <!-- New: Communication Logs Tab -->
+        <div id="logs" class="tab-content">
+            <h2>Communication Logs</h2>
+            
+            <!-- Stats Summary -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_sent }}</div>
+                    <div class="stat-label">Total Sent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ sms_sent }}</div>
+                    <div class="stat-label">SMS Sent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ emails_sent }}</div>
+                    <div class="stat-label">Emails Sent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ success_rate }}%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+            </div>
+            
+            <div class="logs-container">
+                <!-- Filters Sidebar -->
+                <div class="logs-filters">
+                    <h3 style="margin-top: 0;">Filter Logs</h3>
+                    
+                    <div class="filter-group-small">
+                        <label for="log_type">Communication Type:</label>
+                        <select id="log_type" name="log_type">
+                            <option value="">All Types</option>
+                            <option value="sms">SMS</option>
+                            <option value="email">Email</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group-small">
+                        <label for="log_status">Status:</label>
+                        <select id="log_status" name="log_status">
+                            <option value="">All Statuses</option>
+                            <option value="sent">Sent</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="failed">Failed</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group-small">
+                        <label for="log_date_from">Date From:</label>
+                        <input type="date" id="log_date_from" name="log_date_from">
+                    </div>
+                    
+                    <div class="filter-group-small">
+                        <label for="log_date_to">Date To:</label>
+                        <input type="date" id="log_date_to" name="log_date_to">
+                    </div>
+                    
+                    <button type="button" class="apply-btn" style="width: 100%;" onclick="filterLogs()">
+                        Apply Filters
+                    </button>
+                    
+                    <button type="button" class="clear-btn" style="width: 100%; margin-top: 10px;" onclick="clearLogFilters()">
+                        Clear Filters
+                    </button>
+                </div>
+                
+                <!-- Logs List -->
+                <div class="logs-list">
+                    <button class="export-btn" onclick="exportLogs()">Export Logs to CSV</button>
+                    
+                    {% if communication_logs %}
+                        <div id="logsList">
+                            {% for log in communication_logs %}
+                                <div class="log-item {{ log.communication_type }} {% if log.status == 'failed' %}failed{% endif %}" 
+                                     data-type="{{ log.communication_type }}" 
+                                     data-status="{{ log.status }}"
+                                     data-date="{{ log.sent_at|date:'Y-m-d' }}">
+                                    <div class="log-header">
+                                        <div>
+                                            <span class="log-type {{ log.communication_type }}">
+                                                {{ log.communication_type|upper }}
+                                            </span>
+                                            <span class="log-status {{ log.status }}">
+                                                {{ log.status|title }}
+                                            </span>
+                                        </div>
+                                        <div style="font-size: 12px; color: #6c757d;">
+                                            {{ log.sent_at|date:"M d, Y H:i" }}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="contact-field">
+                                        <strong>To:</strong> 
+                                        {% if log.contact %}
+                                            {{ log.contact.Full_name|default:log.contact.email }} 
+                                            ({{ log.contact.email }})
+                                        {% else %}
+                                            {{ log.recipient }}
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if log.subject %}
+                                    <div class="contact-field">
+                                        <strong>Subject:</strong> {{ log.subject }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="log-details">
+                                        <div class="log-detail">
+                                            <strong>Message Preview:</strong>
+                                            <div class="log-content">
+                                                {{ log.message_content|truncatechars:200 }}
+                                            </div>
+                                        </div>
+                                        
+                                        {% if log.error_message %}
+                                        <div class="log-detail">
+                                            <strong>Error:</strong> 
+                                            <span style="color: #dc3545;">{{ log.error_message }}</span>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="log-actions">
+                                            {% if log.communication_type == 'email' %}
+                                                <a href="{% url 'view_email_log' log.id %}" class="view-btn">View Full Email</a>
+                                            {% endif %}
+                                            
+                                            {% if log.status == 'failed' %}
+                                                <button class="resend-btn" onclick="resendCommunication('{{ log.id }}')">
+                                                    Retry Send
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="no-records">No communication logs found.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -609,11 +982,20 @@
             button.addEventListener('click', function() {
                 const contactId = this.getAttribute('data-contact-id') || this.getAttribute('data-lead-id');
                 const contactType = this.getAttribute('data-contact-type') || this.getAttribute('data-lead-type');
-                const contactName = this.closest('.contact-item').querySelector('strong').nextSibling.textContent.trim();
+                const contactElement = this.closest('.contact-item');
+                let contactName = 'this item';
+                
+                if (contactElement) {
+                    const nameElement = contactElement.querySelector('strong');
+                    if (nameElement && nameElement.nextSibling) {
+                        contactName = nameElement.nextSibling.textContent.trim();
+                    }
+                }
                 
                 if (confirm(`Are you sure you want to delete ${contactName}?`)) {
-                    // Send AJAX request to delete the contact
-                    fetch(`/delete/${contactId}/`, {
+                    const url = contactType === 'ai_lead' ? `/delete-ai-lead/${contactId}/` : `/delete/${contactId}/`;
+                    
+                    fetch(url, {
                         method: 'POST',
                         headers: {
                             'X-CSRFToken': getCookie('csrftoken'),
@@ -623,22 +1005,16 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Remove the contact item from DOM
-                            const contactElement = document.getElementById(`contact-${contactId}`) || document.getElementById(`ai-lead-${contactId}`);
                             contactElement.remove();
-                            
-                            // Show success message
                             showSuccessMessage(`${contactName} has been deleted successfully.`);
-                            
-                            // If no contacts left, show "no records" message
                             checkEmptyList(contactType);
                         } else {
-                            alert('Error deleting contact: ' + data.error);
+                            alert('Error deleting item: ' + data.error);
                         }
                     })
                     .catch(error => {
                         console.error('Error:', error);
-                        alert('Error deleting contact');
+                        alert('Error deleting item');
                     });
                 }
             });
@@ -666,7 +1042,6 @@
             successMessage.textContent = message;
             successMessage.style.display = 'block';
             
-            // Hide message after 3 seconds
             setTimeout(() => {
                 successMessage.style.display = 'none';
             }, 3000);
@@ -678,12 +1053,10 @@
             const status = document.getElementById('generateStatus');
             const statusText = document.getElementById('statusText');
             
-            // Show loading state
             btn.disabled = true;
             status.style.display = 'block';
             statusText.textContent = 'Initializing AI generation...';
             
-            // Simulate AI generation process
             setTimeout(() => {
                 statusText.textContent = 'Analyzing market data...';
             }, 1000);
@@ -697,7 +1070,6 @@
             }, 4000);
             
             setTimeout(() => {
-                // Send request to backend to create AI lead
                 fetch('/generate-ai-lead/', {
                     method: 'POST',
                     headers: {
@@ -709,7 +1081,6 @@
                 .then(data => {
                     if (data.success) {
                         showSuccessMessage('AI lead generated successfully!');
-                        // Reload the page to show the new lead
                         setTimeout(() => {
                             window.location.reload();
                         }, 1500);
@@ -722,69 +1093,171 @@
                     alert('Error generating AI lead');
                 })
                 .finally(() => {
-                    // Reset button state
                     btn.disabled = false;
                     status.style.display = 'none';
                 });
             }, 5500);
         }
 
-        // Add this to your existing script section
-        document.addEventListener('DOMContentLoaded', function() {
-            // Real-time search debounce
-            let searchTimeout;
-            const searchInput = document.getElementById('search');
+        // Filter logs functionality
+        function filterLogs() {
+            const typeFilter = document.getElementById('log_type').value;
+            const statusFilter = document.getElementById('log_status').value;
+            const dateFrom = document.getElementById('log_date_from').value;
+            const dateTo = document.getElementById('log_date_to').value;
             
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(() => {
-                        this.form.submit();
-                    }, 500);
-                });
-            }
+            const logItems = document.querySelectorAll('.log-item');
             
-            // Auto-submit when select filters change
-            const leadClassSelect = document.getElementById('lead_class');
-            const sortBySelect = document.getElementById('sort_by');
+            logItems.forEach(item => {
+                let show = true;
+                
+                if (typeFilter && item.dataset.type !== typeFilter) {
+                    show = false;
+                }
+                
+                if (statusFilter && item.dataset.status !== statusFilter) {
+                    show = false;
+                }
+                
+                if (dateFrom && item.dataset.date < dateFrom) {
+                    show = false;
+                }
+                
+                if (dateTo && item.dataset.date > dateTo) {
+                    show = false;
+                }
+                
+                item.style.display = show ? 'block' : 'none';
+            });
+        }
+        
+        function clearLogFilters() {
+            document.getElementById('log_type').value = '';
+            document.getElementById('log_status').value = '';
+            document.getElementById('log_date_from').value = '';
+            document.getElementById('log_date_to').value = '';
             
-            if (leadClassSelect) {
-                leadClassSelect.addEventListener('change', function() {
-                    this.form.submit();
-                });
-            }
-            
-            if (sortBySelect) {
-                sortBySelect.addEventListener('change', function() {
-                    this.form.submit();
-                });
-            }
-            
-            // Show loading state
-            const filterForm = document.querySelector('.filter-form');
-            if (filterForm) {
-                filterForm.addEventListener('submit', function() {
-                    const applyBtn = this.querySelector('.apply-btn');
-                    if (applyBtn) {
-                        applyBtn.innerHTML = 'Applying...';
-                        applyBtn.disabled = true;
+            const logItems = document.querySelectorAll('.log-item');
+            logItems.forEach(item => {
+                item.style.display = 'block';
+            });
+        }
+        
+        function resendCommunication(logId) {
+            if (confirm('Resend this communication?')) {
+                fetch(`/resend-communication/${logId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuccessMessage('Communication resent successfully!');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        alert('Error resending communication: ' + data.error);
                     }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error resending communication');
                 });
             }
-        });
+        }
+        
+        function exportLogs() {
+            fetch('/export-logs/', {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'communication_logs.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error exporting logs');
+            });
+        }
 
-        // Function to check if list is empty and show appropriate message
+        // Real-time search debounce
+        let searchTimeout;
+        const searchInput = document.getElementById('search');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.form.submit();
+                }, 500);
+            });
+        }
+        
+        // Auto-submit when select filters change
+        const leadClassSelect = document.getElementById('lead_class');
+        const sortBySelect = document.getElementById('sort_by');
+        
+        if (leadClassSelect) {
+            leadClassSelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+        }
+        
+        if (sortBySelect) {
+            sortBySelect.addEventListener('change', function() {
+                this.form.submit();
+            });
+        }
+        
+        // Show loading state for filters
+        const filterForm = document.querySelector('.filter-form');
+        if (filterForm) {
+            filterForm.addEventListener('submit', function() {
+                const applyBtn = this.querySelector('.apply-btn');
+                if (applyBtn) {
+                    applyBtn.innerHTML = 'Applying...';
+                    applyBtn.disabled = true;
+                }
+            });
+        }
+
+        // Function to check if list is empty
         function checkEmptyList(contactType) {
-            const tabContent = document.getElementById(contactType === 'contact' ? 'contacts' : 'leads');
+            let tabContent;
+            if (contactType === 'contact') {
+                tabContent = document.getElementById('contacts');
+            } else if (contactType === 'ai_lead') {
+                tabContent = document.getElementById('leads');
+            } else {
+                return;
+            }
+            
+            if (!tabContent) return;
+            
             const contactItems = tabContent.querySelectorAll('.contact-item');
             const noRecords = tabContent.querySelector('.no-records');
             
-            if (contactItems.length === 0) {
-                if (!noRecords) {
+            if (contactItems.length === 0 && !noRecords) {
+                const contactsList = tabContent.querySelector('.contacts-list');
+                if (contactsList) {
                     const noRecordsDiv = document.createElement('div');
                     noRecordsDiv.className = 'no-records';
                     noRecordsDiv.textContent = contactType === 'contact' ? 'No current users found.' : 'No AI leads found.';
-                    tabContent.querySelector('.contacts-list').appendChild(noRecordsDiv);
+                    contactsList.appendChild(noRecordsDiv);
                 }
             }
         }
