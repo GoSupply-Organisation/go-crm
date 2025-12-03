@@ -1,11 +1,20 @@
+# models.py
 from django.db import models
 from django.contrib.auth.models import User
-from django.utils.timezone import now
 
-class Task(models.Model):
-    title = models.CharField(max_length=20)
-    description = models.CharField(max_length=200, blank=True)
-    created_at = models.DateTimeField(default=now)
+class Todo(models.Model):
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    completed = models.BooleanField(default=False)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    is_completed = models.BooleanField(default=False)
-    completed_at = models.DateTimeField(null=True, default=now)  
+    
+    def __str__(self):
+        return self.title
