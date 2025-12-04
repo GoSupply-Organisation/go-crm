@@ -942,6 +942,8 @@
         <div class="tabs">
             <div class="tab active" data-tab="contacts">Current Users</div>
             <div class="tab" data-tab="leads">AI Leads</div>
+            <div class="tab" data-tab="manual-leads">Manual Leads</div>
+            <div class="tab" data-tab="apex-leads">Apex Leads</div>
             <div class="tab" data-tab="todo">To-Do</div>
         </div>
         <div class="filter-bar">
@@ -1135,6 +1137,16 @@
             {% else %}
                 <div class="no-records">No AI leads have been generated yet. Click the button above to start generating leads.</div>
             {% endif %}
+        </div>
+
+        <div id="manual-leads" class="tab-content">
+            <h2>Manual Leads</h2>
+            <div class="no-records">Manual leads section ready for backend integration.</div>
+        </div>
+
+        <div id="apex-leads" class="tab-content">
+            <h2>Apex Leads</h2>
+            <div class="no-records">Apex leads section ready for backend integration.</div>
         </div>
 
         <div id="todo" class="tab-content">

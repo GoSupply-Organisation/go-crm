@@ -439,3 +439,13 @@ def communication_logs_view(request):
         email_list = [{"id": e.id, "contact": e.contact.Full_name, "subject": e.subject, "message": e.message, "sent_at": e.sent_at} for e in email_logs]
         sms_list = [{"id": s.id, "contact": s.contact.Full_name, "body": s.body, "sent_at": s.sent_at} for s in sms_logs]
         return JsonResponse({"emails": email_list, "sms": sms_list})
+
+
+
+def promote(request, contact_id):
+    if request.method == "POST":
+        contact = get_object_or_404(Contact, pk=contact_id)
+        if contact == None:
+            return JsonResponse({'success': False, 'error': 'Contact not found'})
+        if contact:
+            pass
