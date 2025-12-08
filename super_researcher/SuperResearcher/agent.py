@@ -6,8 +6,8 @@ from google.adk.models.lite_llm import LiteLlm
 import os
 from dotenv import load_dotenv 
 from .prompting import research_prompt
+import litellm
 
-# litellm._turn_on_debug()
 load_dotenv()
 
 
@@ -27,11 +27,6 @@ model = LiteLlm(
     base_url="https://api.z.ai/api/paas/v4/"
 )
 
-
-# Get the absolute path to the crawl4ai-mcp-server directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-crawl4ai_server_path = os.path.join(parent_dir, "crawl4ai-mcp-server")
 
 root_agent = LlmAgent(
     name="research", 
@@ -66,12 +61,14 @@ root_agent = LlmAgent(
             connection_params=StdioConnectionParams(
                 timeout=20,
                 server_params=StdioServerParameters(
-                    command="python",
+                    command="uvx",
                     args=[
-                        "-m", "crawler_agent.mcp_server",
+                        "--from",
+                        "git+https://github.com/walksoda/crawl-mcp",
+                        "crawl-mcp"
                     ],
                     env={
-                        "PYTHONPATH": crawl4ai_server_path,
+                        "CRAWL4AI_LANG": "en"  # Optional: set language
                     }
                 )
             )
