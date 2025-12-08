@@ -31,33 +31,31 @@ urlpatterns = [
 
 
     # Tracks communication logs
-    path("reachout/", communication_logs_view, name="reachout"),
-
+    path("reachout/", get_communication_logs, name="reachout"),
 
     # Testing
-    path('apex_test/', promote_apex, name='apex_test_'),
-    path("super_test/", promote_super, name="super_test_"),
+    path('apex_test/', promote_apex_research_contact, name='apex_test_'),
+    path("super_test/", promote_super_researcher_contact, name="super_test_"),
 
-
-    path("add_apex/", add_apex, name="add_apex"),
-    path("add_super/", add_super, name="add_super"),
+    path("add_apex/", add_apex_research_contact, name="add_apex"),
+    path("add_super/", add_super_researcher_contact, name="add_super"),
 
     # Apex and Super Researcher data rendering
-    path("render-apex/", render_apex, name="render_apex"),
-    path("render-super/", render_super, name="render_super"),
+    path("render-apex/", get_apex_research_contacts, name="render_apex"),
+    path("render-super/", get_super_researcher_contacts, name="render_super"),
 
     # Promote Apex and Super contacts with ID
-    path("promote-apex/<int:contact_id>/", promote_apex, name="promote_apex_url"),
-    path("promote-super/<int:contact_id>/", promote_super, name="promote_super_url"),
+    path("promote-apex/<int:contact_id>/", promote_apex_research_contact, name="promote_apex_url"),
+    path("promote-super/<int:contact_id>/", promote_super_researcher_contact, name="promote_super_url"),
 
     # Staged leads - shows promoted contacts from both databases
-    path("staged-leads/", staged_leads, name="staged_leads"),
+    path("staged-leads/", get_staged_leads, name="staged_leads"),
 
     # Promote staged leads to active leads
-    path("promote-to-active/", promote_to_active, name="promote_to_active"),
+    path("promote-to-active/", convert_staged_leads_to_active, name="promote_to_active"),
 
     # Active leads view - shows contacts with is_active_lead=True
-    path("active-leads/", active_leads_view, name="active_leads_view")
+    path("active-leads/", get_active_leads, name="active_leads_view")
 
 
 ]

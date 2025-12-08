@@ -432,7 +432,19 @@ def contact_detail_form_view(request, contact_id):
     return render(request, 'contact_detail.html', context)
 
 
-def communication_logs_view(request):
+def get_communication_logs(request):
+    """Retrieves and returns all communication logs (emails and SMS) in JSON format.
+    
+    Fetches all sent emails and SMS records from the database and returns them
+    as JSON data with contact information, timestamps, and message content.
+    
+    Args:
+        request: Django request object. Only POST requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing two lists - 'emails' and 'sms' with their
+                     respective communication records.
+    """
     if request.method == "POST":
         email_logs = sent_emails.objects.all().order_by('-sent_at')
         sms_logs = sent_sms.objects.all().order_by('-sent_at')
@@ -441,8 +453,20 @@ def communication_logs_view(request):
         return JsonResponse({"emails": email_list, "sms": sms_list})
 
 
-
-def promote_apex(request, contact_id):
+def promote_apex_research_contact(request, contact_id):
+    """Marks an Apex Research contact as promoted.
+    
+    Updates the 'promoted' flag of an Apex Research contact to True,
+    indicating it has been moved to the next stage in the lead pipeline.
+    
+    Args:
+        request: Django request object. Only POST requests are processed.
+        contact_id: Primary key of the apex_research contact to promote.
+    
+    Returns:
+        JsonResponse: Success status and message indicating if the promotion
+                     was successful or if an error occurred.
+    """
     if request.method == "POST":
         contact = get_object_or_404(apex_research, pk=contact_id)
         if contact == None:
@@ -452,7 +476,20 @@ def promote_apex(request, contact_id):
             contact.save()
             return JsonResponse({'success': True, 'message': 'Contact promoted successfully'})
 
-def promote_super(request, contact_id):
+def promote_super_researcher_contact(request, contact_id):
+    """Marks a Super Researcher contact as promoted.
+    
+    Updates the 'promoted' flag of a Super Researcher contact to True,
+    indicating it has been moved to the next stage in the lead pipeline.
+    
+    Args:
+        request: Django request object. Only POST requests are processed.
+        contact_id: Primary key of the SuperResearcher contact to promote.
+    
+    Returns:
+        JsonResponse: Success status and message indicating if the promotion
+                     was successful or if an error occurred.
+    """
     if request.method == "POST":
         contact = get_object_or_404(SuperResearcher, pk=contact_id)
         if contact == None:
@@ -462,7 +499,19 @@ def promote_super(request, contact_id):
             contact.save()
             return JsonResponse({'success': True, 'message': 'Contact promoted successfully'})
         
-def show_promoted_contacts(request):
+def get_promoted_contacts(request):
+    """Retrieves all promoted contacts from both research categories.
+    
+    Fetches all contacts marked as promoted from both the Apex Research
+    and Super Researcher models and returns them as JSON data.
+    
+    Args:
+        request: Django request object. Only POST requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing two lists - 'apex_contacts' and 
+                     'super_contacts' with their respective promoted contacts.
+    """
     if request.method == "POST":
         promoted_apex_contacts = apex_research.objects.filter(promoted=True)
         promoted_super_contacts = SuperResearcher.objects.filter(promoted=True)
@@ -475,12 +524,35 @@ def show_promoted_contacts(request):
 # Del for prod
 
 
-def render_apex(request):
+def get_apex_research_contacts(request):
+    """Retrieves all non-promoted Apex Research contacts.
+    
+    Fetches all Apex Research contacts that have not been marked as promoted
+    and returns them as JSON data for display or processing.
+    
+    Args:
+        request: Django request object. Both POST and GET requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing 'apex_contacts' list with contact data.
+    """
     if request.method == "POST" or request.method == "GET":
         apex_contacts = apex_research.objects.filter(promoted=False)
         return JsonResponse({'apex_contacts': list(apex_contacts.values())})
 
-def add_apex(request):
+def add_apex_research_contact(request):
+    """Creates a new Apex Research contact.
+    
+    Processes form data to create a new Apex Research contact with company,
+    website, phone number, email, and full name. Sets promoted flag to False.
+    
+    Args:
+        request: Django request object containing form data on POST.
+    
+    Returns:
+        HttpResponse: Renders add_apex.html with success message on POST,
+                     or renders the form on GET.
+    """
     if request.method == "POST":
         company = request.POST.get("company")
         website = request.POST.get("website")
@@ -501,12 +573,35 @@ def add_apex(request):
         return render(request, "add_apex.html")
     
 
-def render_super(request):
+def get_super_researcher_contacts(request):
+    """Retrieves all Super Researcher contacts.
+    
+    Fetches all Super Researcher contacts regardless of promotion status
+    and returns them as JSON data for display or processing.
+    
+    Args:
+        request: Django request object. Both POST and GET requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing 'super_contacts' list with contact data.
+    """
     if request.method == "POST" or request.method == "GET":
         super_contacts = SuperResearcher.objects.all()
         return JsonResponse({'super_contacts': list(super_contacts.values())})
 
-def add_super(request):
+def add_super_researcher_contact(request):
+    """Creates a new Super Researcher contact.
+    
+    Processes form data to create a new Super Researcher contact with company,
+    website, phone number, email, and full name. Sets promoted flag to False.
+    
+    Args:
+        request: Django request object containing form data on POST.
+    
+    Returns:
+        HttpResponse: Renders add_super.html with success message on POST,
+                     or renders the form on GET.
+    """
     if request.method == "POST":
         company = request.POST.get("company")
         website = request.POST.get("website")
@@ -527,7 +622,20 @@ def add_super(request):
         return render(request, "add_super.html")
     
 
-def staged_leads(request):
+def get_staged_leads(request):
+    """Retrieves all promoted leads from both research categories.
+    
+    Fetches all contacts marked as promoted from both the Apex Research
+    and Super Researcher models, representing leads in the staged state
+    before becoming active.
+    
+    Args:
+        request: Django request object. Both POST and GET requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing two lists - 'apex_leads' and 
+                     'super_leads' with their respective promoted contacts.
+    """
     if request.method == "POST" or request.method == "GET":
         apex_leads = apex_research.objects.filter(promoted=True)
         super_leads = SuperResearcher.objects.filter(promoted=True)
@@ -537,7 +645,20 @@ def staged_leads(request):
         })
     
 
-def promote_to_active(request):
+def convert_staged_leads_to_active(request):
+    """Converts all staged (promoted) leads to active status.
+    
+    Updates all contacts marked as promoted in both Apex Research and 
+    Super Researcher models, setting their is_active_lead flag to True.
+    This represents moving leads from the staged to active state.
+    
+    Args:
+        request: Django request object. Both POST and GET requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing the updated lists of apex_leads and 
+                     super_leads with their new active status.
+    """
     if request.method == "POST" or request.method == "GET":
         apex_leads = apex_research.objects.filter(promoted=True)
         super_leads = SuperResearcher.objects.filter(promoted=True)
@@ -554,7 +675,21 @@ def promote_to_active(request):
             'super_leads': list(super_leads.values())
         })
     
-def active_leads_view(request):
+def get_active_leads(request):
+    """Retrieves and resets active leads from both research categories.
+    
+    Fetches all contacts marked as active in both Apex Research and 
+    Super Researcher models, resets their promoted flags to False,
+    and returns them as JSON data. This function appears to be part of
+    a lead management workflow.
+    
+    Args:
+        request: Django request object. Both POST and GET requests are processed.
+    
+    Returns:
+        JsonResponse: JSON containing two lists - 'active_apex_leads' and 
+                     'active_super_leads' with their respective active contacts.
+    """
     if request.method == "POST" or request.method == "GET":
         promoted_apex_contacts = apex_research.objects.filter(promoted=True)
         promoted_super_contacts = SuperResearcher.objects.filter(promoted=True)
