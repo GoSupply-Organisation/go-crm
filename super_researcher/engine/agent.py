@@ -1,6 +1,6 @@
 from google.adk.agents import LlmAgent  
 from google.adk.tools.mcp_tool.mcp_toolset import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams, SseConnectionParams, SseServerParams
 from mcp import StdioServerParameters
 from google.adk.models.lite_llm import LiteLlm
 import os
@@ -70,35 +70,21 @@ root_agent = LlmAgent(
         #     )
         # ),
         McpToolset(
+            connection_params=SseConnectionParams(
+                url="http://localhost:11235/mcp/sse",
+                timeout=20,
+            )
+        ),
+        McpToolset(
             connection_params=StdioConnectionParams(
                 timeout=20,
                 server_params=StdioServerParameters(
                     command="uvx",
-                    args=[
-                        "--from",
-                        "git+https://github.com/walksoda/crawl-mcp",
-                        "crawl-mcp"
-                    ],
-                    env={
-                        "CRAWL4AI_LANG": "en"  # Optional: set language
-                    }
+                args=["mcp-neo4j-cypher@0.5.1", "--transport", "stdio"],
                 )
             )
-        ),
-        McpToolset(
-        connection_params=StdioConnectionParams(
-            timeout=20,
-            server_params=StdioServerParameters(
-                command="uvx",
-                args=["mcp-neo4j-cypher@0.5.1", "--transport", "stdio"
-                ],
-                env={"NEO4J_URI": "bolt://localhost:7687",
-        "NEO4J_USERNAME": "neo4j",
-        "NEO4J_PASSWORD": "<your-password>",
-        "NEO4J_DATABASE": "neo4j"}
-        )
-    )
-)
+        )  
     ]
 )
+
 
