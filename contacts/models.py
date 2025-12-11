@@ -7,7 +7,7 @@ class Contact(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     Full_name = models.CharField(max_length=60, blank=True)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=15, blank=True)
+    phone_number = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)  # Auto-set on creation
         # New classification field with predefined choices
     LEAD_CLASSIFICATIONS = [

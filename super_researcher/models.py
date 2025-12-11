@@ -4,7 +4,7 @@ from django.db import models
 class SuperResearcher(models.Model):
     company = models.CharField(max_length=200,null= True)
     website = models.URLField(max_length=200, null= True)
-    phone_number = models.IntegerField(null= True)
+    phone_number = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(max_length=200, null= True)
     full_name = models.CharField(max_length=200, null= True)
     promoted = models.BooleanField(default=False)
