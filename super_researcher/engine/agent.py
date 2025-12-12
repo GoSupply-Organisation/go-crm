@@ -19,13 +19,13 @@ api_base_url = "http://localhost:1234/v1"
 
 # Create the LiteLlm model instance
 model = LiteLlm(
-    model = model_name_at_endpoint,
-    base_url=api_base_url,
+    # model = model_name_at_endpoint,
+    # base_url=api_base_url,
     stream = True,
-    # model = "openai/glm-4.6",
-    # api_key=os.getenv("GLM_API_KEY"),
-    # base_url="https://api.z.ai/api/paas/v4/",
-    # response_format={"type": "json_object"}
+    model = "openai/glm-4.5-flash",
+    api_key=os.getenv("GLM_API_KEY"),
+    base_url="https://api.z.ai/api/paas/v4/",
+    response_format={"type": "json_object"}
 
 )
 
@@ -43,7 +43,7 @@ class ResearchOutput(BaseModel):
 root_agent = LlmAgent(
     name="research", 
     output_key='research_output', 
-    # output_schema=ResearchOutput,
+    output_schema=ResearchOutput,
     instruction=research_prompt,
     model=model,  # Add this line
     tools=[
@@ -55,20 +55,6 @@ root_agent = LlmAgent(
                 )
             )
         ),
-        # McpToolset(
-        #     connection_params=StdioConnectionParams(
-        #         timeout=20,
-        #         server_params=StdioServerParameters(
-        #             command="npx",
-        #             args=[
-        #                 "-y", "mcp-searxng"
-        #             ],
-        #             env={
-        #                 "SEARXNG_URL": "YOUR_SEARXNG_INSTANCE_URL"
-        #             }
-        #         )
-        #     )
-        # ),
         McpToolset(
             connection_params=SseConnectionParams(
                 url="http://localhost:11235/mcp/sse",
@@ -79,11 +65,19 @@ root_agent = LlmAgent(
             connection_params=StdioConnectionParams(
                 timeout=20,
                 server_params=StdioServerParameters(
-                    command="uvx",
-                args=["mcp-neo4j-cypher@0.5.1", "--transport", "stdio"],
-                )
-            )
-        )  
+                    command="docker",
+                    args=[
+                        "run", 
+                        "-i",  # Keep STDIN open
+                        "--rm",  # Remove container after exit
+                        "-e", "NEO4J_URI=bolt://host.docker.internal:7687",
+                        "-e", "NEO4J_USERNAME=neo4j",
+                        "-e", "NEO4J_PASSWORD=your-password",
+                        "mcp/neo4j-cypher"
+                    ],
+        )
+    )
+)
     ]
 )
 
