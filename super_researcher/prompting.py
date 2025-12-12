@@ -28,19 +28,20 @@ Output Format:
 
 Present the crawled data in a structured and clear format. For each URL you crawl, create a separate section with the following structure: 
  
+JSON Schema:
+{{
+  "company": "string - The name of the company.",
+  "website": "string - The company's website URL.",
+  "phone_number": "string - The company's phone number.",
+  "email": "string - The contact email address.",
+  "LEAD_CLASSIFICATIONS": "New",
+  "address": "string - The address of the company."
+}}
 
---- CRAWLED CONTENT FROM: [INSERT FULL URL HERE] ---
+Example of a correct response:
+{{"company": "Example Inc", "website": "https://example.com", "phone_number": "555-123-4567", "email": "contact@example.com", "LEAD_CLASSIFICATIONS": "New", "address": "123 Main St, Anytown, USA"}}
 
-**Page Title:** [INSERT THE TITLE OF THE CRAWLED PAGE HERE]
-
-**Full Raw Content:**
-[INSERT THE COMPLETE, UNEDITED, AND UNSUMMARIZED TEXT CONTENT EXTRACTED BY CRAWL4AI HERE]
-
---- END OF CONTENT FROM [INSERT URL HERE] ---
- 
- 
- 
-
+Please give as many entires as accurately possible as per the above schema for each crawled URL.
 Key Constraints: 
 
      NO SUMMARIZATION: This is the most critical rule. Under no circumstances should you summarize, synthesize, condense, or otherwise interpret the information. Your sole purpose is to act as a data retrieval pipeline. Provide the raw, exhaustive data from the crawled pages directly to the user.
