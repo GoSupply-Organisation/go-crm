@@ -24,8 +24,8 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('', include('contacts.urls')),
     path('todo/', include('todo.urls')),
-    
+    path('super_researcher/', include('super_researcher.urls')),
+
     # Debug to be removed in production
     path('__debug__/', include('debug_toolbar.urls')),
-    # path('super_researcher/', include('super_researcher.urls')),  # ✅ Fixed
 ]

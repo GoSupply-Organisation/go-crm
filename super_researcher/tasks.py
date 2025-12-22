@@ -4,7 +4,8 @@ from .models import SuperResearcher # Make sure to import your model
 from celery import shared_task
 from core.celery import app
 
-def run_researcher(prompt: str, working_dir: str = "super_researcher"):
+@shared_task(bind=True)
+def run_researcher(self, prompt: str, working_dir: str = "super_researcher"):
     """
     Executes the 'adk' CLI tool with a given prompt and returns its output.
 
@@ -13,12 +14,14 @@ def run_researcher(prompt: str, working_dir: str = "super_researcher"):
         working_dir (str): The directory where the command should be run.
 
     Returns:
-        tuple: A tuple containing (stdout, stderr, return_code).
-               Returns (None, None, -1) if the command is not found.
+        dict: Result with stdout, stderr, return_code, and task_id.
     """
     command_to_run_cli = ["adk", "run", "engine"]
-    
+
     try:
+        # Update task state to show it's running
+        self.update_state(state='PROGRESS', meta={'status': 'Starting researcher process'})
+
         process = subprocess.Popen(
             command_to_run_cli,
             cwd=working_dir,
@@ -31,17 +34,28 @@ def run_researcher(prompt: str, working_dir: str = "super_researcher"):
         print(f"Starting researcher process: {' '.join(command_to_run_cli)}")
         stdout, stderr = process.communicate(input=prompt)
         return_code = process.returncode
-        
+
         print(f"Process finished with return code: {return_code}")
-        return stdout, stderr, return_code
+
+        # If successful, trigger the save task
+        if return_code == 0 and stdout:
+            save_research_output.delay(stdout)
+
+        return {
+            'stdout': stdout,
+            'stderr': stderr,
+            'return_code': return_code,
+            'task_id': self.request.id
+        }
 
     except FileNotFoundError:
-        print(f"Error: The command '{command_to_run_cli[0]}' was not found.")
-        print("Please ensure 'adk' is installed and in your system's PATH.")
-        return None, None, -1
+        error_msg = f"Error: The command '{command_to_run_cli[0]}' was not found."
+        print(error_msg + "Please ensure 'adk' is installed and in your system's PATH.")
+        return {'stdout': None, 'stderr': error_msg, 'return_code': -1, 'task_id': self.request.id}
     except Exception as e:
-        print(f"An unexpected error occurred during subprocess execution: {e}")
-        return None, None, -1
+        error_msg = f"An unexpected error occurred during subprocess execution: {e}"
+        print(error_msg)
+        return {'stdout': None, 'stderr': error_msg, 'return_code': -1, 'task_id': self.request.id}
     
 
 @shared_task

@@ -1032,9 +1032,38 @@
             <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
                 <h3 style="margin-top: 0; color: #495057;">AI Lead Generation</h3>
                 <p style="margin-bottom: 10px; color: #6c757d;">Generate new leads using AI analysis of market data and customer patterns.</p>
+
+                <!-- Manual Override Section -->
+                <div style="margin-bottom: 15px;">
+                    <button id="toggleCustomPrompt" class="btn-secondary" style="margin-bottom: 10px; padding: 8px 16px; font-size: 14px;">
+                        🎯 Custom Prompt Override
+                    </button>
+
+                    <div id="customPromptSection" style="display: none; margin-bottom: 15px;">
+                        <label for="customPrompt" style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">
+                            Custom Research Prompt (optional):
+                        </label>
+                        <textarea
+                            id="customPrompt"
+                            placeholder="Enter custom instructions for AI lead generation...&#10;&#10;Example: Find B2B leads in the technology industry, focusing on companies with 50-200 employees in the US. Include company name, contact person, email, phone, and address."
+                            style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; resize: vertical; font-family: inherit; font-size: 14px;">
+                        </textarea>
+                        <div style="margin-top: 8px;">
+                            <button id="generateCustomBtn" class="generate-btn" style="background: linear-gradient(45deg, #28a745, #20c997); margin-right: 10px;">
+                                Generate with Custom Prompt
+                            </button>
+                            <button id="useDefaultBtn" class="btn-secondary" style="padding: 10px 16px;">
+                                Use Default
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Default Generation Button -->
                 <button id="generateLeadBtn" class="generate-btn" onclick="generateAILead()">
                     Generate New AI Lead
                 </button>
+
                 <div id="generateStatus" style="margin-top: 10px; display: none;">
                     <span id="statusText">Initializing AI...</span>
                     <div class="loading"></div>
@@ -1312,61 +1341,151 @@
 
 
         // AI Lead Generation
-        function generateAILead() {
+        function generateAILead(customPrompt = null) {
             const btn = document.getElementById('generateLeadBtn');
             const status = document.getElementById('generateStatus');
             const statusText = document.getElementById('statusText');
-            
+
             // Show loading state
             btn.disabled = true;
             status.style.display = 'block';
-            statusText.textContent = 'Initializing AI generation...';
-            
-            // Simulate AI generation process
-            setTimeout(() => {
-                statusText.textContent = 'Analyzing market data...';
-            }, 1000);
-            
-            setTimeout(() => {
-                statusText.textContent = 'Identifying potential leads...';
-            }, 2500);
-            
-            setTimeout(() => {
-                statusText.textContent = 'Validating lead information...';
-            }, 4000);
-            
-            setTimeout(() => {
-                // Send request to backend to create AI lead
-                fetch('/generate-ai-lead/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Content-Type': 'application/json',
-                    },
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        showSuccessMessage('AI lead generated successfully!');
-                        // Reload the page to show the new lead
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        alert('Error generating AI lead: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error generating AI lead');
-                })
-                .finally(() => {
-                    // Reset button state
-                    btn.disabled = false;
-                    status.style.display = 'none';
-                });
-            }, 5500);
+            statusText.textContent = 'Starting AI lead generation...';
+
+            // Prepare request data
+            const requestData = {};
+            if (customPrompt) {
+                requestData.prompt = customPrompt;
+            }
+
+            // Send request to backend to start AI lead generation
+            fetch('/super_researcher/generate-leads/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusText.textContent = 'AI research task started! Processing leads...';
+                    showSuccessMessage('AI lead generation started! Leads will appear automatically.');
+
+                    // Check for task completion periodically
+                    checkTaskStatus(data.task_id);
+                } else {
+                    alert('Error generating AI lead: ' + data.error);
+                    resetGenerateButton();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating AI lead: ' + error.message);
+                resetGenerateButton();
+            });
         }
+
+        // Reset generate button to initial state
+        function resetGenerateButton() {
+            const btn = document.getElementById('generateLeadBtn');
+            const status = document.getElementById('generateStatus');
+            btn.disabled = false;
+            status.style.display = 'none';
+        }
+
+        // Check task status and refresh when complete
+        function checkTaskStatus(taskId) {
+            const statusText = document.getElementById('statusText');
+            let checkCount = 0;
+            const maxChecks = 30; // Check for up to ~2 minutes
+
+            const checkInterval = setInterval(() => {
+                checkCount++;
+
+                // Update status message
+                if (checkCount < 10) {
+                    statusText.textContent = 'Researching market data and identifying leads...';
+                } else if (checkCount < 20) {
+                    statusText.textContent = 'Analyzing and validating lead information...';
+                } else {
+                    statusText.textContent = 'Finalizing leads database entry...';
+                }
+
+                // Stop checking after max attempts
+                if (checkCount >= maxChecks) {
+                    clearInterval(checkInterval);
+                    statusText.textContent = 'Taking longer than expected... Please check the AI Leads tab manually.';
+                    resetGenerateButton();
+                    return;
+                }
+
+                // Check if leads have been added to database
+                fetch('/super_researcher/ai-leads/')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.data && data.data.length > 0) {
+                            clearInterval(checkInterval);
+                            statusText.textContent = 'Lead generation completed! Refreshing...';
+                            showSuccessMessage('AI leads generated successfully!');
+
+                            // Switch to AI Leads tab and refresh
+                            setTimeout(() => {
+                                resetGenerateButton();
+                                // Switch to AI leads tab
+                                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                                document.querySelector('[data-tab="leads"]').classList.add('active');
+                                document.getElementById('leads').classList.add('active');
+                                window.location.reload();
+                            }, 1500);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking leads:', error);
+                    });
+
+            }, 4000); // Check every 4 seconds
+        }
+
+        // Manual Override Toggle and Custom Prompt Generation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle custom prompt section
+            const toggleBtn = document.getElementById('toggleCustomPrompt');
+            const customPromptSection = document.getElementById('customPromptSection');
+
+            if (toggleBtn && customPromptSection) {
+                toggleBtn.addEventListener('click', function() {
+                    const isHidden = customPromptSection.style.display === 'none';
+                    customPromptSection.style.display = isHidden ? 'block' : 'none';
+                    toggleBtn.textContent = isHidden ? '❌ Hide Custom Prompt' : '🎯 Custom Prompt Override';
+                });
+            }
+
+            // Generate with custom prompt
+            const generateCustomBtn = document.getElementById('generateCustomBtn');
+            if (generateCustomBtn) {
+                generateCustomBtn.addEventListener('click', function() {
+                    const customPrompt = document.getElementById('customPrompt').value.trim();
+                    if (customPrompt) {
+                        generateAILead(customPrompt);
+                    } else {
+                        alert('Please enter a custom prompt first.');
+                    }
+                });
+            }
+
+            // Use default prompt
+            const useDefaultBtn = document.getElementById('useDefaultBtn');
+            if (useDefaultBtn) {
+                useDefaultBtn.addEventListener('click', function() {
+                    document.getElementById('customPrompt').value = '';
+                    customPromptSection.style.display = 'none';
+                    toggleBtn.textContent = '🎯 Custom Prompt Override';
+                    generateAILead(); // Use default prompt
+                });
+            }
+        });
 
         // Add this to your existing script section
         document.addEventListener('DOMContentLoaded', function() {

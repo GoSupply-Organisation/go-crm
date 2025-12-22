@@ -171,6 +171,9 @@ CELERY_BROKER_URL = os.getenv("REDIS_HOST")
 CELERY_BEAT_SCHEDULE = {
     "RunSuperResearcher": {
         "task": "super_researcher.tasks.save_research_output",
-        "schedule": crontab(hour=1),
+        "schedule": crontab(minute=5),
     },
 }
+
+
+LOGIN_REDIRECT_URL = '/'
