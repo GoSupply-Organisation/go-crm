@@ -1070,6 +1070,20 @@
                 </div>
             </div>
 
+            <!-- Super Researcher Leads Section -->
+            <div id="super-researcher-leads" style="margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #f5576c;">🔶 Super Researcher Leads <span class="ai-status status-ready">Auto-Generated</span></h3>
+                    <button class="add-btn" onclick="loadSuperResearcherLeads()" style="padding: 8px 16px; font-size: 14px;">
+                        🔄 Refresh Super Leads
+                    </button>
+                </div>
+                <div id="super-researcher-list" class="contacts-list">
+                    <div class="no-records">Click "Refresh Super Leads" to load Super Researcher contacts</div>
+                </div>
+            </div>
+
+            <!-- Original AI Leads Section (if you still have the old AI leads model) -->
             {% if ai_leads %}
                 <div class="contacts-list">
                     {% for ai_lead in ai_leads %}
@@ -1079,16 +1093,16 @@
                                     <a href="{% url 'ai_lead_info' ai_lead.id %}" class="info-btn">View Details</a>
                                     <a href="{% url 'convert_ai_lead' ai_lead.id %}" class="enquire-btn">Convert to Contact</a>
                                 {% endif %}
-                                <button class="delete-btn" 
-                                        data-lead-id="{{ ai_lead.id }}" 
+                                <button class="delete-btn"
+                                        data-lead-id="{{ ai_lead.id }}"
                                         data-lead-type="ai_lead">
                                     Delete
                                 </button>
                             </div>
-                            
+
                             <!-- AI Lead Status -->
                             <div class="contact-field">
-                                <strong>Status:</strong> 
+                                <strong>Status:</strong>
                                 <span class="ai-status status-{{ ai_lead.status }}">
                                     {% if ai_lead.status == 'pending' %}Pending Generation
                                     {% elif ai_lead.status == 'generating' %}Generating
@@ -1107,28 +1121,28 @@
                             <div class="contact-field">
                                 <strong>Potential Phone:</strong> {{ ai_lead.predicted_phone|default:"Not provided" }}
                             </div>
-                            
+
                             <!-- AI Analysis Fields -->
                             <div class="ai-field">
                                 <div class="ai-field-label">AI Confidence Score</div>
                                 <div class="ai-field-value">{{ ai_lead.confidence_score|default:"Not provided" }}%</div>
                             </div>
-                            
+
                             <div class="ai-field">
                                 <div class="ai-field-label">Lead Source</div>
                                 <div class="ai-field-value">{{ ai_lead.ai_source|default:"Not provided" }}</div>
                             </div>
-                            
+
                             <div class="ai-field">
                                 <div class="ai-field-label">AI Analysis</div>
                                 <div class="ai-field-value">{{ ai_lead.ai_analysis|default:"Analysis pending..." }}</div>
                             </div>
-                            
+
                             <div class="ai-field">
                                 <div class="ai-field-label">Predicted Interest</div>
                                 <div class="ai-field-value">{{ ai_lead.predicted_interest|default:"Not provided" }}</div>
                             </div>
-                            
+
                             <div class="contact-field">
                                 <strong>Created:</strong> {{ ai_lead.created_at|date:"M d, Y H:i" }}
                             </div>
@@ -1136,7 +1150,7 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="no-records">No AI leads have been generated yet. Click the button above to start generating leads.</div>
+                <div class="no-records">No legacy AI leads found. The Super Researcher leads above will show your generated leads.</div>
             {% endif %}
         </div>
 
@@ -2123,6 +2137,9 @@
                         loadApexLeads();
                     } else if (tabId === 'staged-leads') {
                         loadStagedLeads();
+                    } else if (tabId === 'leads') {
+                        // Load Super Researcher leads when AI Leads tab is clicked
+                        loadSuperResearcherLeads();
                     }
                 });
             });
@@ -2545,7 +2562,68 @@
 
 
 
-        
+        // Load Super Researcher Leads from database
+        function loadSuperResearcherLeads() {
+            const container = document.getElementById('super-researcher-list');
+            container.innerHTML = '<div class="no-records">Loading Super Researcher leads...</div>';
+
+            fetch('/super_researcher/render-super/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.super_contacts && data.super_contacts.length > 0) {
+                        const contactsHtml = data.super_contacts.map(contact => `
+                            <div class="contact-item">
+                                <div class="contact-actions">
+                                    <button class="info-btn" onclick="moreInfoSuper(${contact.id})">More Info</button>
+                                    <button class="enquire-btn" onclick="emailSuper(${contact.id})">Email</button>
+                                    <button class="enquire-btn1" onclick="smsSuper(${contact.id})">SMS</button>
+                                    <button class="delete-btn" onclick="deleteSuperContact(${contact.id})">Delete</button>
+                                    <span class="ai-status status-ready">🔶 Super Lead</span>
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Company:</strong> ${contact.company || 'N/A'}
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Name:</strong> ${contact.full_name || 'N/A'}
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Email:</strong> ${contact.email || 'N/A'}
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Phone:</strong> ${contact.phone_number || 'N/A'}
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Website:</strong> ${contact.website || 'N/A'}
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Lead Class:</strong> <span class="priority-badge priority-${contact.lead_class?.toLowerCase() || 'new'}">${contact.lead_class || 'New'}</span>
+                                </div>
+                                ${contact.address ? `<div class="contact-field"><strong>Address:</strong> ${contact.address}</div>` : ''}
+                                ${contact.notes ? `<div class="contact-field"><strong>Notes:</strong> ${contact.notes}</div>` : ''}
+                                <div class="contact-field">
+                                    <strong>Status:</strong>
+                                    <span class="ai-status status-${contact.promoted ? 'ready' : 'pending'}">
+                                        ${contact.promoted ? 'Promoted' : 'Not Promoted'}
+                                    </span>
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Type:</strong> Super Researcher
+                                </div>
+                                <div class="contact-field">
+                                    <strong>Created:</strong> ${contact.created_at ? new Date(contact.created_at).toLocaleDateString() : 'N/A'}
+                                </div>
+                            </div>
+                        `).join('');
+                        container.innerHTML = contactsHtml;
+                    } else {
+                        container.innerHTML = '<div class="no-records">No Super Researcher leads found. Generate some leads using the buttons above!</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading Super Researcher leads:', error);
+                    container.innerHTML = '<div class="no-records">Error loading Super Researcher leads. Please try again.</div>';
+                });
+        }
 
         // Super Researcher Actions
         function moreInfoSuper(contactId) {

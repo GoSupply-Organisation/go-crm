@@ -33,20 +33,7 @@ urlpatterns = [
     # Tracks communication logs
     path("reachout/", get_communication_logs, name="reachout"),
 
-    # Testing
-    path('apex_test/', promote_apex_research_contact, name='apex_test_'),
-    path("super_test/", promote_super_researcher_contact, name="super_test_"),
-
-    path("add_apex/", add_apex_research_contact, name="add_apex"),
-    path("add_super/", add_super_researcher_contact, name="add_super"),
-
-    # Apex and Super Researcher data rendering
-    path("render-apex/", get_apex_research_contacts, name="render_apex"),
-    path("render-super/", get_super_researcher_contacts, name="render_super"),
-
     # Promote Apex and Super contacts with ID
-    path("promote-apex/<int:contact_id>/", promote_apex_research_contact, name="promote_apex_url"),
-    path("promote-super/<int:contact_id>/", promote_super_researcher_contact, name="promote_super_url"),
 
     # Staged leads - shows promoted contacts from both databases
     path("staged-leads/", get_staged_leads, name="staged_leads"),

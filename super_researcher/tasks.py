@@ -3,6 +3,33 @@ import re
 from .models import SuperResearcher # Make sure to import your model
 from celery import shared_task
 from core.celery import app
+from .prompting import research_prompt   
+
+@shared_task
+def periodic_lead_generation():
+    """
+    Periodic task that automatically generates AI leads every 5 minutes.
+    This task is designed to run without external arguments.
+    """
+    
+    print("Starting periodic AI lead generation...")
+    try:
+        # Start the research task with the default prompt
+        task = run_researcher.delay(research_prompt)
+        print(f"Periodic lead generation task started with ID: {task.id}")
+        return {
+            'success': True,
+            'task_id': task.id,
+            'message': 'Periodic lead generation started successfully'
+        }
+    except Exception as e:
+        error_msg = f"Failed to start periodic lead generation: {e}"
+        print(error_msg)
+        return {
+            'success': False,
+            'error': str(e),
+            'message': 'Periodic lead generation failed'
+        }
 
 @shared_task(bind=True)
 def run_researcher(self, prompt: str, working_dir: str = "super_researcher"):

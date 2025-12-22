@@ -170,8 +170,8 @@ CELERY_BROKER_URL = os.getenv("REDIS_HOST")
 
 CELERY_BEAT_SCHEDULE = {
     "RunSuperResearcher": {
-        "task": "super_researcher.tasks.save_research_output",
-        "schedule": crontab(minute=5),
+        "task": "super_researcher.tasks.periodic_lead_generation",
+        "schedule": crontab(minute=5),  # Run every 5 minutes
     },
 }
 
