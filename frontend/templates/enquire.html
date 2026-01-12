@@ -1,0 +1,315 @@
+<!-- templates/enquire.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Send Enquiry - {{ contact.Full_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        .contact-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+        .contact-field {
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="text"],
+        input[type="email"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 120px;
+            resize: vertical;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.8;
+        }
+        .message-preview {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border-left: 4px solid #007bff;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Send Enquiry to {{ contact.Full_name }}</h2>
+        
+        <div id="successMessage" class="success-message"></div>
+        <div id="errorMessage" class="error-message"></div>
+        
+        <div class="contact-info">
+            <h3>Contact Information</h3>
+            <div class="contact-field"><strong>Name:</strong> {{ contact.Full_name }}</div>
+            <div class="contact-field"><strong>Email:</strong> {{ contact.email }}</div>
+            {% if contact.phone %}
+            <div class="contact-field"><strong>Phone:</strong> {{ contact.phone }}</div>
+            {% endif %}
+            <div class="contact-field"><strong>Lead Classification:</strong> {{ contact.lead_class }}</div>
+        </div>
+
+        <form id="enquiryForm">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="enquiry_type">Enquiry Type:</label>
+                <select id="enquiry_type" name="enquiry_type" required>
+                    <option value="">Select enquiry type</option>
+                    <option value="product_info">Product Information</option>
+                    <option value="pricing">Pricing Inquiry</option>
+                    <option value="demo">Request Demo</option>
+                    <option value="support">Technical Support</option>
+                    <option value="partnership">Partnership Opportunity</option>
+                    <option value="custom">Custom Message</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="subject">Subject:</label>
+                <input type="text" id="subject" name="subject" required 
+                       placeholder="Enter email subject...">
+            </div>
+
+            <div class="form-group">
+                <label for="message">Message:</label>
+                <textarea id="message" name="message" required 
+                          placeholder="Enter your message..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="custom_message">Customize Message (optional):</label>
+                <textarea id="custom_message" name="custom_message" 
+                          placeholder="Add any custom content to the automated message..."></textarea>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="send_email" name="send_email" checked>
+                <label for="send_email" style="display: inline; font-weight: normal;">
+                    Send Email
+                </label>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="send_sms" name="send_sms">
+                <label for="send_sms" style="display: inline; font-weight: normal;">
+                    Send SMS (if phone number available)
+                </label>
+            </div>
+
+            <div class="message-preview" id="messagePreview" style="display: none;">
+                <strong>Message Preview:</strong>
+                <div id="previewContent"></div>
+            </div>
+
+            <div class="btn-group">
+                <button type="button" id="previewBtn" class="btn btn-secondary">Preview Message</button>
+                <button type="submit" class="btn btn-success">Send Enquiry</button>
+                <a href="{% url '/index' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('previewBtn').addEventListener('click', function() {
+            const message = document.getElementById('message').value;
+            const customMessage = document.getElementById('custom_message').value;
+            const enquiryType = document.getElementById('enquiry_type').value;
+            
+            if (message) {
+                let preview = message;
+                if (customMessage) {
+                    preview += '\n\n' + customMessage;
+                }
+                
+                document.getElementById('previewContent').textContent = preview;
+                document.getElementById('messagePreview').style.display = 'block';
+            }
+        });
+
+        document.getElementById('enquiryForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('contact_id', '{{ contact.id }}');
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Sending...';
+            submitBtn.disabled = true;
+
+            fetch('{% url "send_enquiry" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('successMessage', data.message || 'Enquiry sent successfully!');
+                    document.getElementById('enquiryForm').reset();
+                    document.getElementById('messagePreview').style.display = 'none';
+                    
+                    // Redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '{% url "index" %}';
+                    }, 2000);
+                } else {
+                    showMessage('errorMessage', data.error || 'Error sending enquiry. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('errorMessage', 'Error sending enquiry. Please try again.');
+            })
+            .finally(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        function showMessage(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+            
+            // Hide message after 5 seconds
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 5000);
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Auto-fill subject based on enquiry type
+        document.getElementById('enquiry_type').addEventListener('change', function() {
+            const subjectField = document.getElementById('subject');
+            const messageField = document.getElementById('message');
+            
+            const templates = {
+                'product_info': {
+                    subject: 'Product Information Request',
+                    message: `Dear {{ contact.Full_name }},\n\nThank you for your interest in our products. We would be happy to provide you with detailed information about our offerings.\n\nBest regards,\nYour Company Team`
+                },
+                'pricing': {
+                    subject: 'Pricing Information',
+                    message: `Dear {{ contact.Full_name }},\n\nThank you for your inquiry about our pricing. Here are our current packages and pricing details.\n\nBest regards,\nYour Company Team`
+                },
+                'demo': {
+                    subject: 'Demo Request Confirmation',
+                    message: `Dear {{ contact.Full_name }},\n\nWe have received your request for a demo and will contact you shortly to schedule a convenient time.\n\nBest regards,\nYour Company Team`
+                },
+                'support': {
+                    subject: 'Technical Support Request',
+                    message: `Dear {{ contact.Full_name }},\n\nWe have received your technical support request and our team will assist you shortly.\n\nBest regards,\nSupport Team`
+                }
+            };
+
+            if (templates[this.value]) {
+                subjectField.value = templates[this.value].subject;
+                messageField.value = templates[this.value].message;
+            } else if (this.value === 'custom') {
+                subjectField.value = '';
+                messageField.value = '';
+            }
+        });
+    </script>
+</body>
+</html>

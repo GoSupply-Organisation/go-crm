@@ -8,17 +8,15 @@ Running celery:
     celery -A core worker --loglevel=info     
 
 
-
-
 docker pull mcp/neo4j-cypher
 
-
 docker build -t mcp/neo4j-cypher:latest .
-
-
 
 docker run -p 9021:8000 \
   -e NEO4J_URI="bolt://host.docker.internal:7687" \
   -e NEO4J_USERNAME="neo4j" \
   -e NEO4J_PASSWORD="your-password" \
   mcp-neo4j-cypher:latest
+
+
+Running the adk engine 
