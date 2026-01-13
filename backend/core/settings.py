@@ -169,7 +169,8 @@ TWILIO_AUTH=os.getenv("TWILIO_AUTH_TOKEN")
 
 CELERY_TIMEZONE = "Australia/Sydney"
 CELERY_BROKER_URL = os.getenv("REDIS_HOST")
-
+# Was testing if it was working hence the 5 minute interval
+# When more stable and actually in prod will swap back to every hour
 CELERY_BEAT_SCHEDULE = {
     "RunSuperResearcher": {
         "task": "super_researcher.tasks.periodic_lead_generation",

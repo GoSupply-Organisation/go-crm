@@ -1,0 +1,4 @@
+1. need to fix the celery worker
+2. need to test the celery beats
+3. need to add the authentication logic
+4. need to check if the superresearcher is working properly

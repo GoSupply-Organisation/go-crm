@@ -27,15 +27,3 @@ Running the adk engine
 npx create-next-app@latest frontend --yes
 cd frontend
 npm run dev
-
-
-/contact_api/index
-
-/contact_api/update/{contact_id}
-
-
-# Source - https://stackoverflow.com/a
-# Posted by ghostdog74, modified by community. See post 'Timeline' for change history
-# Retrieved 2026-01-13, License - CC BY-SA 4.0
-
-lsof -i tcp:8000
