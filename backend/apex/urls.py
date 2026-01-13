@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
-
+# Arbitrary urls will be sunsetted in favour of the django ninja api points
+# No longer used
 urlpatterns = [
     path('apex_test/', views.promote_apex_research_contact, name='apex_test_'),
     path("add_apex/", views.add_apex_research_contact, name="add_apex"),
