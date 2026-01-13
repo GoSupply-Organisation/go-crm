@@ -45,9 +45,9 @@ class SentSmsSchema(ModelSchema):
             'body',
             'sent_at',
         ]
-api = NinjaAPI()
+contact_api = NinjaAPI()
 
-@api.get("/index", response=list[ContactSchema])
+@contact_api.get("/index", response=list[ContactSchema])
 def contact_list(request):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -74,7 +74,7 @@ def contact_list(request):
     return 200, contacts
 
 
-@api.post("/add", response=ContactSchema)
+@contact_api.post("/add", response=ContactSchema)
 def create_contact(request, payload: ContactSchema):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -90,7 +90,7 @@ def create_contact(request, payload: ContactSchema):
     )
     return 201, contact
 
-@api.get("/moreinfo/{contact_id}", response=ContactSchema)
+@contact_api.get("/moreinfo/{contact_id}", response=ContactSchema)
 def contact_detail(request, contact_id: int):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -98,7 +98,7 @@ def contact_detail(request, contact_id: int):
     contact = get_object_or_404(Contact, pk=contact_id)
     return 200, contact
 
-@api.post("/update/{contact_id}", response=ContactSchema)
+@contact_api.post("/update/{contact_id}", response=ContactSchema)
 def edit_contact(request, contact_id: int, payload: ContactSchema):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -117,7 +117,7 @@ def edit_contact(request, contact_id: int, payload: ContactSchema):
     except Contact.DoesNotExist:
         return 404, {'error': 'Contact not found'}
 
-@api.delete("/delete/{contact_id}")
+@contact_api.delete("/delete/{contact_id}")
 def delete_contact(request, contact_id: int):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -131,7 +131,7 @@ def delete_contact(request, contact_id: int):
         return 500, {'success': False, 'error': str(e)}
 
 
-@api.post("/send-email/{contact_id}", response=SentEmailSchema)
+@contact_api.post("/send-email/{contact_id}", response=SentEmailSchema)
 def send_email_endpoint(request, contact_id: int, payload: dict):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -171,7 +171,7 @@ def send_email_endpoint(request, contact_id: int, payload: dict):
     except Exception as e:
         return 500, {'error': f'Failed to send email: {str(e)}'}
 
-@api.post("/send-sms/{contact_id}", response=SentSmsSchema)
+@contact_api.post("/send-sms/{contact_id}", response=SentSmsSchema)
 def send_sms_endpoint(request, contact_id: int, payload: dict):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -206,7 +206,7 @@ def send_sms_endpoint(request, contact_id: int, payload: dict):
     except Exception as e:
         return 500, {'error': f'Failed to send SMS: {str(e)}'}
 
-@api.get("/communication-logs")
+@contact_api.get("/communication-logs")
 def get_communication_logs(request):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
@@ -237,7 +237,7 @@ def get_communication_logs(request):
 
     return 200, {"emails": email_list, "sms": sms_list}
 
-@api.get("/contact-emails/{contact_id}", response=list[SentEmailSchema])
+@contact_api.get("/contact-emails/{contact_id}", response=list[SentEmailSchema])
 def get_contact_emails(request, contact_id: int):
     if not request.user.is_authenticated:
         return 403, {'error': 'Authentication required'}
