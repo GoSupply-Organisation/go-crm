@@ -10,7 +10,7 @@ from sms import send_sms
 class ContactSchema(ModelSchema):
     class Meta:
         model = Contact
-        model_fields = [
+        fields = [
             'id',
             'Full_name',
             'email',
@@ -25,7 +25,7 @@ class ContactSchema(ModelSchema):
 class SentEmailSchema(ModelSchema):
     class Meta:
         model = sent_emails
-        model_fields = [
+        fields = [
             'id',
             'contact',
             'subject',
@@ -39,7 +39,7 @@ class SentEmailSchema(ModelSchema):
 class SentSmsSchema(ModelSchema):
     class Meta:
         model = sent_sms
-        model_fields = [
+        fields = [
             'id',
             'contact',
             'body',
