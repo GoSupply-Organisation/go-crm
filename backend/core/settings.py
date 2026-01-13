@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'debug_toolbar',
     'mcp_server',
+    'corsheaders',
 
 
     # Created Apps
@@ -66,6 +67,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -174,6 +176,14 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute=5),  # Run every 5 minutes
     },
 }
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 
 LOGIN_REDIRECT_URL = '/'

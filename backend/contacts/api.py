@@ -46,7 +46,7 @@ class SentSmsSchema(ModelSchema):
             'body',
             'sent_at',
         ]
-contact_api = NinjaAPI()
+contact_api = NinjaAPI(auth=django_auth)
 
 @contact_api.get("/index", response=list[ContactSchema])
 def contact_list(request):
