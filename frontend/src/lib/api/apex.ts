@@ -1,3 +1,5 @@
+// These have not use been written at least on the backend when backend is more stable then these will be implemented
+
 import { apiClient } from './client';
 import { ApexContact, ApexFormData, ApexFilters } from '../types/apex';
 

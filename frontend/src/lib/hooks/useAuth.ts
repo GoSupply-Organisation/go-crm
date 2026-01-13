@@ -1,92 +1,105 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { apiClient } from '../api/client';
+// 'use client'; // <--- THIS LINE IS REQUIRED to fix the error
 
-interface User {
-  id: number;
-  username: string;
-  email: string;
-}
+// import { useState, useEffect, createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+// import { apiClient } from '../api/client';
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-}
+// interface User {
+//   id: number;
+//   username: string;
+//   email: string;
+// }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// interface AuthContextType {
+//   user: User | null;
+//   loading: boolean;
+//   login: (username: string, password: string) => Promise<void>;
+//   logout: () => void;
+//   isAuthenticated: boolean;
+// }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+// const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Verify token and get user info
-      fetchUserInfo();
-    } else {
-      setLoading(false);
-    }
-  }, []);
+// export function AuthProvider({ children }: { children: ReactNode }) {
+//   const [user, setUser] = useState<User | null>(null);
+//   const [loading, setLoading] = useState(true);
 
-  const fetchUserInfo = async () => {
-    try {
-      // You would typically have a /me endpoint
-      // For now, we'll just set loading to false
-      setLoading(false);
-    } catch (error) {
-      localStorage.removeItem('auth_token');
-      apiClient.clearToken();
-      setLoading(false);
-    }
-  };
+//   const fetchUserInfo = async () => {
+//     try {
+//       // TODO: Replace with actual API call to get current user
+//       // const response = await apiClient.get('/auth/user/');
+//       // setUser(response.data);
+      
+//       // Mock user for persistence
+//       setUser({ id: 1, username: 'persisted_user', email: 'test@example.com' });
+//       setLoading(false);
+//     } catch (error) {
+//       console.error('Session invalid', error);
+//       localStorage.removeItem('auth_token');
+//       apiClient.clearToken();
+//       setUser(null);
+//       setLoading(false);
+//     }
+//   };
 
-  const login = async (username: string, password: string) => {
-    try {
-      // Replace with actual login API call
-      // const response = await apiClient.post('/api/auth/login', { username, password });
-      // const { token, user } = response;
+//   useEffect(() => {
+//     const token = localStorage.getItem('auth_token');
+//     if (token) {
+//       fetchUserInfo();
+//     } else {
+//       setLoading(false);
+//     }
+//   }, []);
 
-      // Mock login for now
-      const mockToken = 'mock_jwt_token';
-      const mockUser = { id: 1, username, email: `${username}@example.com` };
+//   const login = useCallback(async (username: string, password: string) => {
+//     setLoading(true);
+//     try {
+//       // TODO: Replace with actual API call
+//       // const response = await apiClient.post('/auth/login/', { username, password });
+//       // const { access_token, user } = response.data;
 
-      localStorage.setItem('auth_token', mockToken);
-      apiClient.setToken(mockToken);
-      setUser(mockUser);
-    } catch (error) {
-      throw new Error('Login failed');
-    }
-  };
+//       // Mock login logic
+//       const mockToken = 'mock_jwt_token';
+//       const mockUser = { id: 1, username, email: `${username}@example.com` };
 
-  const logout = () => {
-    localStorage.removeItem('auth_token');
-    apiClient.clearToken();
-    setUser(null);
-  };
+//       localStorage.setItem('auth_token', mockToken);
+//       apiClient.setToken(mockToken);
+//       setUser(mockUser);
+//     } catch (error) {
+//       console.error(error);
+//       throw new Error('Login failed');
+//     } finally {
+//       setLoading(false);
+//     }
+//   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        logout,
-        isAuthenticated: !!user,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
+//   const logout = useCallback(() => {
+//     localStorage.removeItem('auth_token');
+//     apiClient.clearToken();
+//     setUser(null);
+//   }, []);
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+//   const value = useMemo(
+//     () => ({
+//       user,
+//       loading,
+//       login,
+//       logout,
+//       isAuthenticated: !!user,
+//     }),
+//     [user, loading, login, logout]
+//   );
+
+//   return (
+//     <AuthContext.Provider value={value}>
+//       {children}
+//     </AuthContext.Provider>
+//   );
+// }
+
+// export function useAuth() {
+//   const context = useContext(AuthContext);
+//   if (context === undefined) {
+//     throw new Error('useAuth must be used within an AuthProvider');
+//   }
+//   return context;
+// }

@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { PassThrough } from 'stream';
+// import { useAuth } from '@/lib/hooks/useAuth';
 
 export function Header() {
-  const { user, logout } = useAuth();
+  // let { user, logout } = useAuth();
+  let {user, logout} = {} as any;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
