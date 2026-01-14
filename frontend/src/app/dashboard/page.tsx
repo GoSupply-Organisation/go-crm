@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 
 export default function DashboardPage() {
+  
   const { contacts, loading: contactsLoading } = useContacts();
   const { todos, loading: todosLoading } = useTodos();
   const { stagedLeads, activeLeads, loading: researchLoading } = useResearchPipeline();

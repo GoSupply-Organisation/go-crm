@@ -21,12 +21,13 @@ export function Header() {
             <span className="text-sm font-medium text-gray-700">{user?.username || 'User'}</span>
           </div>
 
-          <button
+          <a
+            href="auth/login"
             onClick={logout}
             className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           >
             Logout
-          </button>
+          </a>
         </div>
       </div>
     </header>
