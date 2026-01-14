@@ -50,6 +50,9 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'mcp_server',
     'corsheaders',
+    "rest_auth",
+    "rest_framework",
+    "rest_framework.authtoken",
 
 
 

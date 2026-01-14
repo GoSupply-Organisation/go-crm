@@ -4,7 +4,7 @@ import { Todo, TodoFormData, TodoFilters } from '../types/todos';
 
 export const todosApi = {
   // Get all todos
-  getAllTodos: async (): Promise<Todo[]> => {
+  getAllTodos: async (filters?: TodoFilters): Promise<Todo[]> => {
     return apiClient.get<Todo[]>('/api/todo/index');
   },
 

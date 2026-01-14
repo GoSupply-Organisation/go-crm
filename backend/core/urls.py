@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from todo import views
 from contacts.api import contact_router
 from todo.api import todo_router
@@ -28,6 +28,7 @@ api.add_router("todo", todo_router)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", api.urls), 
+    path('rest-auth/', include('dj_rest_auth.urls')),
 # Arbitrary urls will be sunsetted in favour of the django ninja api points see above
 # No longer used
     path("", include('mcp_server.urls')),
