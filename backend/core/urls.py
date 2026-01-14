@@ -21,10 +21,10 @@ from contacts.api import contact_router
 from todo.api import todo_router
 from user.api import auth_router
 from ninja import NinjaAPI
-from rest_framework.authtoken.models import Token
-from rest_framework.authentication import TokenAuthentication
+# from rest_framework.authtoken.models import Token
+# from rest_framework.authentication import TokenAuthentication
 
-api = NinjaAPI(auth=TokenAuthentication())
+api = NinjaAPI()
 
 api.add_router("auth", auth_router)
 api.add_router("contact", contact_router)
