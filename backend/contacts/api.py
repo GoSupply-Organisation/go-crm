@@ -24,6 +24,19 @@ class ContactSchema(ModelSchema):
             'created_at',
         ]
 
+class ContactCreateSchema(ModelSchema):
+    class Meta:
+        model = Contact
+        fields = [
+            'Full_name',
+            'email',
+            'phone_number',
+            'company',
+            'lead_class',
+            'notes',
+            'address',
+        ]
+
 class SentEmailSchema(ModelSchema):
     class Meta:
         model = sent_emails
@@ -52,11 +65,8 @@ class SentSmsSchema(ModelSchema):
 contact_router = Router()
 
 
-@contact_router.get("/index", response={200: list[ContactSchema], 403: dict})
+@contact_router.get("/index", response=list[ContactSchema])
 def contact_list(request):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     lead_class = request.GET.get('lead_class')
     search_query = request.GET.get('search')
     sort_by = request.GET.get('sort_by', 'Full_name')
@@ -76,14 +86,11 @@ def contact_list(request):
 
     contacts = contacts.order_by(sort_by)
 
-    return 200, contacts
+    return contacts
 
 
-@contact_router.post("/add", response={201: ContactSchema, 403: dict})
-def create_contact(request, payload: ContactSchema):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
+@contact_router.post("/add", response=ContactSchema)
+def create_contact(request, payload: ContactCreateSchema):
     contact = Contact.objects.create(
         Full_name=payload.Full_name,
         email=payload.email,
@@ -93,21 +100,15 @@ def create_contact(request, payload: ContactSchema):
         notes=payload.notes,
         address=payload.address,
     )
-    return 201, contact
+    return contact
 
-@contact_router.get("/moreinfo/{contact_id}", response={200: ContactSchema, 403: dict, 404: dict})
+@contact_router.get("/moreinfo/{contact_id}", response=ContactSchema)
 def contact_detail(request, contact_id: int):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     contact = get_object_or_404(Contact, pk=contact_id)
-    return 200, contact
+    return contact
 
-@contact_router.post("/update/{contact_id}", response={200: ContactSchema, 403: dict, 404: dict})
-def edit_contact(request, contact_id: int, payload: ContactSchema):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
+@contact_router.post("/update/{contact_id}", response=ContactSchema)
+def edit_contact(request, contact_id: int, payload: ContactCreateSchema):
     try:
         contact = Contact.objects.get(pk=contact_id)
         contact.Full_name = payload.Full_name
@@ -118,29 +119,25 @@ def edit_contact(request, contact_id: int, payload: ContactSchema):
         contact.notes = payload.notes
         contact.address = payload.address
         contact.save()
-        return 200, contact
+        return contact
     except Contact.DoesNotExist:
-        return 404, {'error': 'Contact not found'}
+        from ninja.errors import HttpError
+        raise HttpError(404, 'Contact not found')
 
-@contact_router.delete("/delete/{contact_id}", response={200: dict, 403: dict, 404: dict, 500: dict})
+@contact_router.delete("/delete/{contact_id}", response=dict)
 def delete_contact(request, contact_id: int):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     try:
         contact = get_object_or_404(Contact, pk=contact_id)
         contact_name = contact.Full_name if contact.Full_name else 'Unnamed Contact'
         contact.delete()
-        return 200, {'success': True, 'message': f'Contact {contact_name} deleted successfully'}
+        return {'success': True, 'message': f'Contact {contact_name} deleted successfully'}
     except Exception as e:
-        return 500, {'success': False, 'error': str(e)}
+        from ninja.errors import HttpError
+        raise HttpError(500, str(e))
 
 
-@contact_router.post("/send-email/{contact_id}", response={201: SentEmailSchema, 403: dict, 400: dict, 500: dict})
+@contact_router.post("/send-email/{contact_id}", response=SentEmailSchema)
 def send_email_endpoint(request, contact_id: int, payload: dict):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     try:
         contact = get_object_or_404(Contact, pk=contact_id)
         subject = payload.get('subject')
@@ -148,7 +145,8 @@ def send_email_endpoint(request, contact_id: int, payload: dict):
         from_email = payload.get('from_email', contact.email)
 
         if not all([subject, message]):
-            return 400, {'error': 'Subject and message are required'}
+            from ninja.errors import HttpError
+            raise HttpError(400, 'Subject and message are required')
 
         sent = send_mail(
             subject=subject,
@@ -164,23 +162,21 @@ def send_email_endpoint(request, contact_id: int, payload: dict):
             message=message,
             sent_at=timezone.now(),
             from_email=from_email,
-            sent_by=request.user if request.user.is_authenticated else None
+            sent_by=request.auth
         )
 
         if sent and contact.lead_class == "New":
             contact.lead_class = "Contacted"
             contact.save()
 
-        return 201, email_record
+        return email_record
 
     except Exception as e:
-        return 500, {'error': f'Failed to send email: {str(e)}'}
+        from ninja.errors import HttpError
+        raise HttpError(500, f'Failed to send email: {str(e)}')
 
-@contact_router.post("/send-sms/{contact_id}", response={201: SentSmsSchema, 403: dict, 400: dict, 500: dict})
+@contact_router.post("/send-sms/{contact_id}", response=SentSmsSchema)
 def send_sms_endpoint(request, contact_id: int, payload: dict):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     try:
         contact = get_object_or_404(Contact, pk=contact_id)
         company_number = "0424854899"
@@ -188,7 +184,8 @@ def send_sms_endpoint(request, contact_id: int, payload: dict):
         recip_number = contact.phone_number
 
         if not all([body, recip_number]):
-            return 400, {'error': 'Need body and phone number'}
+            from ninja.errors import HttpError
+            raise HttpError(400, 'Need body and phone number')
 
         sms = send_sms(
             body=body,
@@ -206,16 +203,14 @@ def send_sms_endpoint(request, contact_id: int, payload: dict):
             contact.lead_class = "Contacted"
             contact.save()
 
-        return 201, sms_record
+        return sms_record
 
     except Exception as e:
-        return 500, {'error': f'Failed to send SMS: {str(e)}'}
+        from ninja.errors import HttpError
+        raise HttpError(500, f'Failed to send SMS: {str(e)}')
 
-@contact_router.get("/communication-logs", response={200: dict, 403: dict})
+@contact_router.get("/communication-logs", response=dict)
 def get_communication_logs(request):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     email_logs = sent_emails.objects.all().order_by('-sent_at')
     sms_logs = sent_sms.objects.all().order_by('-sent_at')
 
@@ -240,14 +235,11 @@ def get_communication_logs(request):
         } for s in sms_logs
     ]
 
-    return 200, {"emails": email_list, "sms": sms_list}
+    return {"emails": email_list, "sms": sms_list}
 
-@contact_router.get("/contact-emails/{contact_id}", response={200: list[SentEmailSchema], 403: dict, 404: dict})
+@contact_router.get("/contact-emails/{contact_id}", response=list[SentEmailSchema])
 def get_contact_emails(request, contact_id: int):
-    if not request.user.is_authenticated:
-        return 403, {'error': 'Authentication required'}
-
     contact = get_object_or_404(Contact, pk=contact_id)
     emails = sent_emails.objects.filter(contact=contact).order_by('-sent_at')
-    return 200, emails
+    return emails
 
