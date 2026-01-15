@@ -4,55 +4,38 @@ import {
   SignupData,
   AuthResponse,
   User,
-  PasswordResetData,
-  PasswordResetConfirmData,
-  PasswordChangeData,
-  AuthTokens,
 } from '../types/auth';
 
 export const authApi = {
+  // Get CSRF token
+  getCsrfToken: async (): Promise<{ csrftoken: string }> => {
+    const response = await apiClient.get<{ csrftoken: string }>('/api/auth/set-csrf-token');
+    apiClient.setCsrfToken(response.csrftoken);
+    return response;
+  },
+
   // Login
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    return apiClient.post<AuthResponse>('/rest-auth/login/', credentials);
+  login: async (credentials: LoginCredentials): Promise<{ success: boolean; message?: string }> => {
+    return apiClient.post<{ success: boolean; message?: string }>('/api/auth/login', credentials);
   },
 
   // Signup
-  signup: async (data: SignupData): Promise<AuthResponse> => {
-    return apiClient.post<AuthResponse>('/rest-auth/registration/', data);
+  signup: async (data: SignupData): Promise<{ success: string } | { error: string }> => {
+    return apiClient.post<{ success: string } | { error: string }>('/api/auth/register', data);
   },
 
   // Logout
-  logout: async (): Promise<{ detail: string }> => {
-    return apiClient.post<{ detail: string }>('/rest-auth/logout/');
+  logout: async (): Promise<{ message: string }> => {
+    return apiClient.post<{ message: string }>('/api/auth/logout');
   },
 
   // Get user details
   getUser: async (): Promise<User> => {
-    return apiClient.get<User>('/rest-auth/user/');
+    return apiClient.get<User>('/api/auth/user');
   },
 
   // Update user details
   updateUser: async (data: Partial<User>): Promise<User> => {
-    return apiClient.patch<User>('/rest-auth/user/', data);
-  },
-
-  // Password reset
-  passwordReset: async (data: PasswordResetData): Promise<{ detail: string }> => {
-    return apiClient.post<{ detail: string }>('/rest-auth/password/reset/', data);
-  },
-
-  // Password reset confirm
-  passwordResetConfirm: async (data: PasswordResetConfirmData): Promise<{ detail: string }> => {
-    return apiClient.post<{ detail: string }>('/rest-auth/password/reset/confirm/', data);
-  },
-
-  // Password change
-  passwordChange: async (data: PasswordChangeData): Promise<{ detail: string }> => {
-    return apiClient.post<{ detail: string }>('/rest-auth/password/change/', data);
-  },
-
-  // Verify token
-  verifyToken: async (token: string): Promise<User> => {
-    return apiClient.post<User>('/rest-auth/token/verify/', { token });
+    return apiClient.patch<User>('/api/auth/user', data);
   },
 };

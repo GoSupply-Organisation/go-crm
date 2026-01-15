@@ -1,11 +1,11 @@
 export interface LoginCredentials {
-  username: string;
+  username?: string;
   email: string;
   password: string;
 }
 
 export interface SignupData {
-  username: string;
+  username?: string;
   email: string;
   password1: string;
   password2: string;
@@ -17,11 +17,8 @@ export interface AuthResponse {
 }
 
 export interface User {
-  pk: number;
   username: string;
   email: string;
-  first_name: string;
-  last_name: string;
 }
 
 export interface PasswordResetData {

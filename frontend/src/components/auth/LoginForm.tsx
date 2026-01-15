@@ -8,7 +8,6 @@ export function useLoginForm() {
   const router = useRouter();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     password: '',
   });
@@ -29,7 +28,7 @@ export function useLoginForm() {
     setLoading(true);
 
     try {
-      await login(formData.username, formData.email, formData.password);
+      await login(formData.email, formData.password);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');

@@ -42,7 +42,7 @@ export function useSignupForm() {
     setLoading(true);
 
     try {
-      await signup(formData.username, formData.email, formData.password1, formData.password2);
+      await signup(formData.username, formData.email, formData.password1);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Signup failed. Please try again.');
