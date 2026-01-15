@@ -1,4 +1,4 @@
-from ninja import ModelSchema, Router
+from ninja import ModelSchema, Router, Schema
 from ninja.security import django_auth
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
@@ -33,24 +33,32 @@ class SentSmsSchema(ModelSchema):
         ]
 
 
+class EmailSendSchema(Schema):
+    subject: str
+    message: str
+    from_email: str = None
+
+
+class SMSSendSchema(Schema):
+    body: str
+
+
 communications_router = Router()
 
 
 @communications_router.post("/send-email/{contact_id}", response=SentEmailSchema, auth=django_auth)
-def send_email_endpoint(request, contact_id: int, payload: dict):
+def send_email_endpoint(request, contact_id: int, payload: EmailSendSchema):
     try:
         contact = get_object_or_404(Contact, pk=contact_id)
-        subject = payload.get('subject')
-        message = payload.get('message')
-        from_email = payload.get('from_email', contact.email)
+        from_email = payload.from_email or contact.email
 
-        if not all([subject, message]):
+        if not all([payload.subject, payload.message]):
             from ninja.errors import HttpError
             raise HttpError(400, 'Subject and message are required')
 
         sent = send_mail(
-            subject=subject,
-            message=message,
+            subject=payload.subject,
+            message=payload.message,
             from_email=from_email,
             recipient_list=[contact.email],
             fail_silently=False,
@@ -58,8 +66,8 @@ def send_email_endpoint(request, contact_id: int, payload: dict):
 
         email_record = sent_emails.objects.create(
             contact=contact,
-            subject=subject,
-            message=message,
+            subject=payload.subject,
+            message=payload.message,
             sent_at=timezone.now(),
             from_email=from_email,
             sent_by=request.auth
@@ -77,26 +85,25 @@ def send_email_endpoint(request, contact_id: int, payload: dict):
 
 
 @communications_router.post("/send-sms/{contact_id}", response=SentSmsSchema, auth=django_auth)
-def send_sms_endpoint(request, contact_id: int, payload: dict):
+def send_sms_endpoint(request, contact_id: int, payload: SMSSendSchema):
     try:
         contact = get_object_or_404(Contact, pk=contact_id)
         company_number = "0424854899"
-        body = payload.get('body')
         recip_number = contact.phone_number
 
-        if not all([body, recip_number]):
+        if not all([payload.body, recip_number]):
             from ninja.errors import HttpError
             raise HttpError(400, 'Need body and phone number')
 
         sms = send_sms(
-            body=body,
+            body=payload.body,
             originator=company_number,
             recipients=[recip_number]
         )
 
         sms_record = sent_sms.objects.create(
             contact=contact,
-            body=body,
+            body=payload.body,
             sent_at=timezone.now()
         )
 

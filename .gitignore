@@ -10,3 +10,5 @@ node_modules/
 /playwright/.auth/
 
 storage/
+
+__pycache__ 
