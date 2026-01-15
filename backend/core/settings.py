@@ -192,6 +192,4 @@ CORS_ALLOW_CREDENTIALS = True
 LOGIN_REDIRECT_URL = '/'
 
 
-
-
 AUTH_USER_MODEL = 'user.CustomUser'

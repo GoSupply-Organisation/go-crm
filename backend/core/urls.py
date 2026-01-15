@@ -16,14 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from todo import views
 from contacts.api import contact_router
 from todo.api import todo_router
 from user.api import auth_router
-from user.models import CustomUser
 from ninja import NinjaAPI
-# from rest_framework.authtoken.models import Token
-# from rest_framework.authentication import TokenAuthentication
 
 api = NinjaAPI()
 
@@ -40,7 +36,7 @@ urlpatterns = [
     path('', include('contacts.urls')),
     path('todo/', include('todo.urls')),
     path('super_researcher/', include('super_researcher.urls')),
-    path("user/", include('user.urls')),
+
     path('apex/', include('apex.urls')),
 
     # Debug to be removed in production
