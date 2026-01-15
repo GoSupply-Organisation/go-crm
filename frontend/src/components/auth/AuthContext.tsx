@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
+      await authApi.getCsrfToken();
       const userData = await authApi.getUser();
       setUser(userData);
     } catch (error) {
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const response = await authApi.login({ email, password });
     if (response.success) {
+      await authApi.getCsrfToken();
       const userData = await authApi.getUser();
       setUser(userData);
     } else {

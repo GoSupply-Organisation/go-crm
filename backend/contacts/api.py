@@ -37,7 +37,7 @@ class ContactCreateSchema(ModelSchema):
 contact_router = Router()
 
 
-@contact_router.get("/index", response=list[ContactSchema])
+@contact_router.get("/index", response=list[ContactSchema], auth=django_auth)
 def contact_list(request):
     lead_class = request.GET.get('lead_class')
     search_query = request.GET.get('search')
