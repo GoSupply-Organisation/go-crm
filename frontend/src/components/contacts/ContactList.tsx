@@ -3,11 +3,14 @@
 import React, { useState } from 'react';
 import { Contact } from '@/lib/types/contacts';
 import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
 
 interface ContactListProps {
   contacts: Contact[];
   loading?: boolean;
   onContactClick?: (contact: Contact) => void;
+  onSendEmail?: (contactId: number) => void;
+  onSendSMS?: (contactId: number) => void;
 }
 
 const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'purple' | 'green' | 'red'> = {
@@ -20,7 +23,7 @@ const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'p
   'Dying': 'red',
 };
 
-export function ContactList({ contacts, loading, onContactClick }: ContactListProps) {
+export function ContactList({ contacts, loading, onContactClick, onSendEmail, onSendSMS }: ContactListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState<string>('');
 
@@ -69,16 +72,44 @@ export function ContactList({ contacts, loading, onContactClick }: ContactListPr
         {filteredContacts.map((contact) => (
           <div
             key={contact.id}
-            onClick={() => onContactClick?.(contact)}
-            className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
+            className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h3 className="font-semibold text-lg text-gray-900">{contact.Full_name}</h3>
-                <p className="text-sm text-gray-600">{contact.email}</p>
-                <p className="text-sm text-gray-600">{contact.company}</p>
+                <div
+                  onClick={() => onContactClick?.(contact)}
+                  className="cursor-pointer"
+                >
+                  <h3 className="font-semibold text-lg text-gray-900">{contact.Full_name}</h3>
+                  <p className="text-sm text-gray-600">{contact.email}</p>
+                  <p className="text-sm text-gray-600">{contact.company}</p>
+                </div>
               </div>
-              <Badge variant={leadClassColors[contact.lead_class]}>{contact.lead_class}</Badge>
+              <div className="flex flex-col items-end gap-2">
+                <Badge variant={leadClassColors[contact.lead_class]}>{contact.lead_class}</Badge>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSendEmail?.(contact.id);
+                    }}
+                  >
+                    Email
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSendSMS?.(contact.id);
+                    }}
+                  >
+                    SMS
+                  </Button>
+                </div>
+              </div>
             </div>
             {contact.phone_number && (
               <p className="text-sm text-gray-500 mt-2">{contact.phone_number}</p>
