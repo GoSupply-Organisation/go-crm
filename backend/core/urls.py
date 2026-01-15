@@ -19,6 +19,7 @@ from django.urls import path, include, re_path
 from contacts.api import contact_router
 from todo.api import todo_router
 from user.api import auth_router
+from communications.api import communications_router
 from ninja import NinjaAPI
 
 api = NinjaAPI()
@@ -26,13 +27,13 @@ api = NinjaAPI()
 api.add_router("auth", auth_router)
 api.add_router("contact", contact_router)
 api.add_router("todo", todo_router)
+api.add_router("communications", communications_router)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", api.urls), 
-    path('rest-auth/', include('dj_rest_auth.urls')),
 
     path("", include('mcp_server.urls')),
-    # path('accounts/', include('allauth.urls')), # Commented out - allauth not configured
+
     path('', include('contacts.urls')),
     path('todo/', include('todo.urls')),
     path('super_researcher/', include('super_researcher.urls')),

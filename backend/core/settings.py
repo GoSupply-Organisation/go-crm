@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "todo",
     "apex",
     "user",
+    "communications",
 ]
 
 

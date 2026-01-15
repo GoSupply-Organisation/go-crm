@@ -43,4 +43,13 @@ def register(request, payload: schemas.SignInSchema):
         return {"success": "User registered successfully"}
     except Exception as e:
         return {"error": str(e)}
+    
+# @auth_router.post("/forgot-password,")
+# def forgot_password(request, payload: schemas.ForgotPasswordSchema):
+#     try:
+#         user = User.objects.get(email=payload.email)
+#         # Here you would normally send an email with a reset link
+#         return {"success": f"Password reset link sent to {payload.email}"}
+#     except User.DoesNotExist:
+#         return {"error": "Email not found"}
  
