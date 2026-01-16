@@ -103,6 +103,16 @@ export function ContactList({ contacts, loading, onContactClick, onSendEmail, on
                   >
                     SMS
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSendSMS?.(contact.id);
+                    }}
+                  >
+                    More Info
+                  </Button>
                 </div>
               </div>
             </div>
