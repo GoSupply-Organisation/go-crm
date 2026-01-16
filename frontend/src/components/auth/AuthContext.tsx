@@ -39,10 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const crsf = authApi.getCsrfToken;
   const login = async (email: string, password: string) => {
+    await crsf();
     const response = await authApi.login({ email, password });
     if (response.success) {
-      await authApi.getCsrfToken();
       const userData = await authApi.getUser();
       setUser(userData);
     } else {

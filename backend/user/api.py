@@ -12,7 +12,7 @@ auth_router = Router()
 def get_csrf_token(request):
     return {"csrftoken": get_token(request)}
  
-@auth_router.post("/login")
+@auth_router.post("/login", auth=django_auth)
 def login_view(request, payload: schemas.SignInSchema):
     user = authenticate(request, username=payload.email, password=payload.password)
     if user is not None:

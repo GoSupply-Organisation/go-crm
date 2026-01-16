@@ -11,8 +11,8 @@ interface ContactListProps {
   onContactClick?: (contact: Contact) => void;
   onSendEmail?: (contactId: number) => void;
   onSendSMS?: (contactId: number) => void;
+  onMoreInfo?: (contactId: number) => void;
 }
-
 const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'purple' | 'green' | 'red'> = {
   'New': 'blue',
   'Contacted': 'yellow',
@@ -23,7 +23,7 @@ const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'p
   'Dying': 'red',
 };
 
-export function ContactList({ contacts, loading, onContactClick, onSendEmail, onSendSMS }: ContactListProps) {
+export function ContactList({ contacts, loading, onContactClick, onSendEmail, onSendSMS, onMoreInfo }: ContactListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState<string>('');
 
@@ -108,7 +108,7 @@ export function ContactList({ contacts, loading, onContactClick, onSendEmail, on
                     variant="secondary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSendSMS?.(contact.id);
+                      onMoreInfo?.(contact.id);
                     }}
                   >
                     More Info
