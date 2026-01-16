@@ -5,7 +5,6 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { ContactList } from '@/components/contacts/ContactList';
 import { useContacts } from '@/lib/hooks/useContacts';
 import { Contact } from '@/lib/types/contacts';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ContactForm } from '@/components/contacts/ContactForm';
@@ -17,15 +16,10 @@ import { communicationsApi } from '@/lib/api/communications';
 export default function ContactsPage() {
   const { contacts, loading, error, refetch } = useContacts();
   const { createContact } = useContactOperations();
-  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
-
-  const handleContactClick = (contact: Contact) => {
-    router.push(`/contacts/${contact.id}`);
-  };
 
   const handleCreateContact = async (data: any) => {
     try {
@@ -81,7 +75,6 @@ export default function ContactsPage() {
           <ContactList
             contacts={contacts}
             loading={loading}
-            onContactClick={handleContactClick}
             onSendEmail={(contactId) => {
               setSelectedContactId(contactId);
               setShowEmailModal(true);

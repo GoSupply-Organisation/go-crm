@@ -76,14 +76,9 @@ export function ContactList({ contacts, loading, onContactClick, onSendEmail, on
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div
-                  onClick={() => onContactClick?.(contact)}
-                  className="cursor-pointer"
-                >
-                  <h3 className="font-semibold text-lg text-gray-900">{contact.Full_name}</h3>
-                  <p className="text-sm text-gray-600">{contact.email}</p>
-                  <p className="text-sm text-gray-600">{contact.company}</p>
-                </div>
+                <h3 className="font-semibold text-lg text-gray-900">{contact.Full_name}</h3>
+                <p className="text-sm text-gray-600">{contact.email}</p>
+                <p className="text-sm text-gray-600">{contact.company}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Badge variant={leadClassColors[contact.lead_class]}>{contact.lead_class}</Badge>
