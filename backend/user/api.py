@@ -2,6 +2,7 @@ from ninja import Router
 from ninja.security import django_auth
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
+from django.views.decorators.csrf import csrf_exempt
 from .models import CustomUser as User
 from . import schemas
  
@@ -11,7 +12,7 @@ auth_router = Router()
 def get_csrf_token(request):
     return {"csrftoken": get_token(request)}
  
-@auth_router.post("/login", auth=django_auth)
+@auth_router.post("/login")
 def login_view(request, payload: schemas.SignInSchema):
     user = authenticate(request, username=payload.email, password=payload.password)
     if user is not None:
