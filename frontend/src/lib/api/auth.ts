@@ -10,7 +10,6 @@ export const authApi = {
   // Get CSRF token
   getCsrfToken: async (): Promise<{ csrftoken: string }> => {
     const response = await apiClient.get<{ csrftoken: string }>('/api/auth/set-csrf-token');
-    apiClient.setCsrfToken(response.csrftoken);
     return response;
   },
 

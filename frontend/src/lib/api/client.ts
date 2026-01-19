@@ -23,13 +23,32 @@ class ApiClient {
     this.csrfToken = token;
   }
 
+  private extractCsrfTokenFromCookies(): string | null {
+    if (typeof document === 'undefined') return null;
+
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'csrftoken') {
+        return decodeURIComponent(value);
+      }
+    }
+    return null;
+  }
+
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
 
-    if (this.csrfToken) {
-      headers['X-CSRFToken'] = this.csrfToken;
+    // First check for stored token, then check cookies
+    let token = this.csrfToken;
+    if (!token) {
+      token = this.extractCsrfTokenFromCookies();
+    }
+
+    if (token) {
+      headers['X-CSRFToken'] = token;
     }
 
     return headers;

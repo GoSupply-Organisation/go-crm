@@ -41,7 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const crsf = authApi.getCsrfToken;
   const login = async (email: string, password: string) => {
+    // First get CSRF token from server
     await crsf();
+    // Now login with the CSRF token that was set as a cookie
     const response = await authApi.login({ email, password });
     if (response.success) {
       const userData = await authApi.getUser();
