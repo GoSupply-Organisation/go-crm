@@ -7,7 +7,7 @@ import {
   SentSms,
   EmailFormData,
   SmsFormData,
-  EditContactData
+  EditContactFormData,
 } from '../types/contact';
 import { MoreInfoResponse } from '../types/moreinfo';
 import { CommunicationLogs } from '../types/contact';
@@ -59,8 +59,8 @@ export const contactsApi = {
     return apiClient.get<SentEmail[]>(`/api/contact/contact-emails/${contact_id}`);
   },
 
-  editContact: async (contactId: number, data: EditContactData) => {
-    return apiClient.put(`/api/contact/${contactId}`, data);
+  editContact: async (contactId: number, data: EditContactFormData) => {
+    return apiClient.put(`/api/contact/update/${contactId}`, data);
   },
 
   getMoreInfoById: async (contact_id: number): Promise<MoreInfoResponse> => {

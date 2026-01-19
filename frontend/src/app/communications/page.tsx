@@ -85,6 +85,7 @@ export default function ContactsPage() {
   const handleEdit = (contactId: number) => {
     const contact = contacts.find(c => c.id === contactId);
     if (contact) {
+      setSelectedContactId(contactId);
       setSelectedContact(contact);
       setShowEditModal(true);
     }

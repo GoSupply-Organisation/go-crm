@@ -65,17 +65,6 @@ export interface SmsFormData {
 }
 
 
-export interface EditContactData {
-  // Define the fields that can be edited for a contact
-  Full_name?: string;
-  company?: string;
-  lead_class?: string;
-  email?: string;
-  phone_number?: string;
-  address?: string;
-  notes?: string;
-}
-
 export interface CommunicationLogs {
   emails: CommunicationLog[];
   sms: CommunicationLog[];
@@ -83,13 +72,13 @@ export interface CommunicationLogs {
 
 
 export interface EditContactFormData {
-  Full_name?: string;
-  company?: string;
-  lead_class?: string;
-  email?: string;
-  phone_number?: string;
-  address?: string;
-  notes?: string;
+  Full_name: string;
+  email: string;
+  phone_number: string;
+  company: string;
+  lead_class: LeadClassification;
+  notes: string;
+  address: string;
 }
 
 export interface EditContactFormProps {

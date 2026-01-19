@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { contactsApi } from '../api/contacts';
-import { Contact, ContactFormData, ContactFilters } from '../types/contact';
+import { Contact, ContactFormData, ContactFilters, EditContactFormData } from '../types/contact';
 import { ApiError } from '../api/client';
 
 export function useContacts(filters?: ContactFilters) {
@@ -156,12 +156,76 @@ export function useContactOperations() {
     }
   }, []);
 
+  const editContact = useCallback(async (id: number, data: EditContactFormData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await contactsApi.editContact(id, data);
+      return result;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to edit contact');
+      }
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const getmoreinfo = useCallback(async (id: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await contactsApi.getContactById(id);
+      return result;
+    }
+    catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      }
+      else {
+        setError('Failed to get more info');
+      }
+      throw err;
+    }
+    finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const communicationlogs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await contactsApi.getCommunicationLogs();
+      return result;
+    }
+    catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      }
+      else {
+        setError('Failed to get communication logs');
+      }
+      throw err;
+    }
+    finally {
+      setLoading(false);
+    }
+  }, []);
+
+
   return {
     createContact,
     updateContact,
     deleteContact,
     sendEmail,
     sendSms,
+    editContact,
+    getmoreinfo,
+    communicationlogs,
     loading,
     error,
   };
