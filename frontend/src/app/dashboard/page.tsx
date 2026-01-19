@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useContacts } from '@/lib/hooks/useContacts';
 import { useTodos } from '@/lib/hooks/useTodos';
@@ -8,13 +8,22 @@ import { useResearchPipeline } from '@/lib/hooks/useResearch';
 import { Card } from '@/components/ui/Card';
 import { Loader } from '@/components/ui/Loader';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/components/auth/AuthContext';
 
 export default function DashboardPage() {
-  
+  const { user } = useAuth();
+  const router = useRouter();
   const { contacts, loading: contactsLoading } = useContacts();
   const { todos, loading: todosLoading } = useTodos();
   const { stagedLeads, activeLeads, loading: researchLoading } = useResearchPipeline();
+
+  useEffect(() => {
+    if (user === null) {
+      router.push('/login');
+    }
+  }, [user, router]);
 
   const totalStaged = stagedLeads.apex.length + stagedLeads.super.length;
   const totalActive = activeLeads.apex.length + activeLeads.super.length;
