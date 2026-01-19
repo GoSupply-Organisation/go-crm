@@ -12,3 +12,5 @@ node_modules/
 storage/
 
 __pycache__ 
+
+claude_code_zai_env.sh
