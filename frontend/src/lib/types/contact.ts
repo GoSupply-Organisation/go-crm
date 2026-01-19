@@ -1,3 +1,5 @@
+import { CommunicationLog } from "./communications";
+
 export type LeadClassification =
   | 'New'
   | 'Contacted'
@@ -60,4 +62,38 @@ export interface EmailFormData {
 
 export interface SmsFormData {
   body: string;
+}
+
+
+export interface EditContactData {
+  // Define the fields that can be edited for a contact
+  Full_name?: string;
+  company?: string;
+  lead_class?: string;
+  email?: string;
+  phone_number?: string;
+  address?: string;
+  notes?: string;
+}
+
+export interface CommunicationLogs {
+  emails: CommunicationLog[];
+  sms: CommunicationLog[];
+}
+
+
+export interface EditContactFormData {
+  Full_name?: string;
+  company?: string;
+  lead_class?: string;
+  email?: string;
+  phone_number?: string;
+  address?: string;
+  notes?: string;
+}
+
+export interface EditContactFormProps {
+  contact: Contact;
+  onSubmit: (data: EditContactFormData) => Promise<void>;
+  onCancel?: () => void;
 }

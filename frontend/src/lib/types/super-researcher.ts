@@ -1,4 +1,4 @@
-import { LeadClassification } from './contacts';
+import { LeadClassification } from './contact';
 
 export interface SuperResearcher {
   id: number;
