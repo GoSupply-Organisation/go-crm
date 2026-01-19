@@ -53,15 +53,6 @@ DATABASES = {
     }
 }
 
-# Email Configuration (Production)
-# Use your production email service (e.g., SendGrid, Mailgun, etc.)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST')
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-
 # CORS Configuration (Production)
 CORS_ALLOWED_ORIGINS = [
     origin.strip() for origin in config('CORS_ALLOWED_ORIGINS', default='').split(",")

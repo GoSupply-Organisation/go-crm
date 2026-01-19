@@ -33,6 +33,7 @@ urlpatterns = [
     path("api/", api.urls), 
 
     path("", include('mcp_server.urls')),
+    path("anymail/", include("anymail.urls")),
 
     path('', include('contacts.urls')),
     path('todo/', include('todo.urls')),

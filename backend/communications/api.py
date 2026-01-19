@@ -1,7 +1,7 @@
 from ninja import ModelSchema, Router, Schema
 from ninja.security import django_auth
 from django.shortcuts import get_object_or_404
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from sms import send_sms
 from .models import sent_emails, sent_sms
@@ -56,13 +56,15 @@ def send_email_endpoint(request, contact_id: int, payload: EmailSendSchema):
             from ninja.errors import HttpError
             raise HttpError(400, 'Subject and message are required')
 
-        sent = send_mail(
+        # Use Anymail/Mailgun via EmailMultiAlternatives
+        email = EmailMultiAlternatives(
             subject=payload.subject,
-            message=payload.message,
+            body=payload.message,
             from_email=from_email,
-            recipient_list=[contact.email],
-            fail_silently=False,
+            to=[contact.email]
         )
+
+        sent = email.send()
 
         email_record = sent_emails.objects.create(
             contact=contact,
