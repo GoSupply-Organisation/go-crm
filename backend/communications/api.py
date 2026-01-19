@@ -1,7 +1,7 @@
 from ninja import ModelSchema, Router, Schema
 from ninja.security import django_auth
 from django.shortcuts import get_object_or_404
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMessage
 from django.utils import timezone
 from sms import send_sms
 from .models import sent_emails, sent_sms
@@ -35,7 +35,6 @@ class SentSmsSchema(ModelSchema):
 class EmailSendSchema(Schema):
     subject: str
     message: str
-    from_email: str = None
 
 
 class SMSSendSchema(Schema):
@@ -44,72 +43,16 @@ class SMSSendSchema(Schema):
 
 communications_router = Router()
 
-
 @communications_router.post("/send-email/{contact_id}", response=SentEmailSchema, auth=django_auth)
 def send_email_endpoint(request, contact_id: int, payload: EmailSendSchema):
-    try:
-        print(f"=== EMAIL SENDING DEBUG ===")
-        print(f"Contact ID: {contact_id}")
-        print(f"Request user: {request.user}")
-        print(f"Request auth: {request.auth}")
-        print(f"User email: {request.user.email}")
-        print(f"Payload: {payload}")
+    message = EmailMessage(
+        subject=payload.subject,
+        body=payload.message,
+        from_email="zachaldin@outlook.com",
+        to=[get_object_or_404(Contact, pk=contact_id).email],
+    )
 
-        contact = get_object_or_404(Contact, pk=contact_id)
-        print(f"Contact found: {contact.Full_name}, email: {contact.email}")
-
-        # Use authenticated user's email as default from_email
-        from_email = payload.from_email or request.user.email
-        print(f"From email: {from_email}")
-
-        if not all([payload.subject, payload.message]):
-            from ninja.errors import HttpError
-            raise HttpError(400, 'Subject and message are required')
-
-        # Debug email backend configuration
-        from django.conf import settings
-        print(f"Email backend: {settings.EMAIL_BACKEND}")
-        print(f"Anymail settings: {getattr(settings, 'ANYMAIL', {})}")
-
-        # Use Anymail/Mailgun via EmailMultiAlternatives
-        print(f"Creating email...")
-        email = EmailMultiAlternatives(
-            subject=payload.subject,
-            body=payload.message,
-            from_email=from_email,
-            to=[contact.email]
-        )
-
-        print(f"Sending email...")
-        sent = email.send()
-        print(f"Email sent result: {sent}")
-
-        print(f"Creating email record...")
-        email_record = sent_emails.objects.create(
-            contact=contact,
-            subject=payload.subject,
-            message=payload.message,
-            from_email=from_email,
-            sent_by=request.user
-        )
-        print(f"Email record created: {email_record.id}")
-
-        if sent and contact.lead_class == "New":
-            contact.lead_class = "Contacted"
-            contact.save()
-            print(f"Contact lead class updated to: {contact.lead_class}")
-
-        print(f"=== EMAIL SENDING COMPLETE ===")
-        return email_record
-
-    except Exception as e:
-        import traceback
-        print(f"=== EMAIL SENDING ERROR ===")
-        print(f"Error: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        print(f"==========================")
-        from ninja.errors import HttpError
-        raise HttpError(500, f'Failed to send email: {str(e)}')
+    return None
 
 
 @communications_router.post("/send-sms/{contact_id}", response=SentSmsSchema, auth=django_auth)

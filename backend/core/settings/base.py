@@ -117,14 +117,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email Configuration - Using standard SMTP with Mailgun (like gosupply-ecommerce)
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.mailgun.org"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = "info@gosupply.com.au"
-SERVER_EMAIL = "info@gosupply.com.au"
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='info@gosupply.com.au')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
 
 # SMS Configuration
 SMS_BACKEND = 'sms.backends.twilio.SmsBackend'
