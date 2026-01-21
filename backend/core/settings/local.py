@@ -51,7 +51,6 @@ DATABASES = {
 # Email Configuration (Local)
 # Use console backend for development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-print("WARNING: Using console email backend for development")
 
 # Celery Configuration (Local)
 # Execute tasks synchronously for easier debugging
