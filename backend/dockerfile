@@ -1,5 +1,5 @@
 # Production Dockerfile for Go-CRM Django Backend
-FROM python:3.12-slim
+FROM python:3.13
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,8 +19,8 @@ RUN uv venv /opt/venv
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy requirements.txt from current directory (backend)
-COPY requirements.txt /tmp/requirements.txt
+# Copy requirements.txt from backend directory (build context is project root)
+COPY backend/requirements.txt /tmp/requirements.txt
 
 # Install Python dependencies
 RUN uv pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
@@ -28,8 +28,8 @@ RUN uv pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 # Create necessary directories
 RUN mkdir -p /app/logs /app/staticfiles /app/mediafiles
 
-# Copy current directory (backend) to /app
-COPY --chown=django:django . /app
+# Copy backend directory to /app
+COPY --chown=django:django backend/ /app
 
 # Change working directory to /app where manage.py is located
 WORKDIR /app
