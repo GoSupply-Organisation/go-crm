@@ -1,6 +1,6 @@
 .venv
 .env
-
+*.pyc
 # Playwright
 node_modules/
 /test-results/
@@ -14,3 +14,5 @@ storage/
 __pycache__ 
 
 claude_code_zai_env.sh
+*.pyc
+__pycache__/
