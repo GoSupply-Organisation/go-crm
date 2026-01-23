@@ -25,6 +25,7 @@ MIDDLEWARE = [
 # Development Apps
 INSTALLED_APPS += [
     "debug_toolbar",
+    "django_extensions"
 ]
 
 # Debug Toolbar Configuration

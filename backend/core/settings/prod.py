@@ -65,15 +65,34 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
-# Static Files (Production)
-# You may want to use CDN or cloud storage (S3, Azure Blob, etc.)
-STATIC_URL = config('STATIC_URL', default='/static/')
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Azure Blob Storage Configuration
+AZURE_ACCOUNT_NAME = config('AZURE_ACCOUNT_NAME')
+AZURE_ACCOUNT_KEY = config('AZURE_KEY')
+AZURE_CONTAINER = config('AZURE_CONTAINER')
+AZURE_SSL = True
 
-# Media Files (Production)
-# You may want to use cloud storage for media files
-MEDIA_URL = config('MEDIA_URL', default='/media/')
-MEDIA_ROOT = BASE_DIR / 'mediafiles'
+STATIC_URL = config("AZURE_STATIC_URL")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "connection_string": config("AZURE_CONNECTION_STRING"),
+            "azure_container": "media",
+            "expiration_secs": None,
+            "overwrite_files": True,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "connection_string": config("AZURE_CONNECTION_STRING"),
+            "azure_container": "static",
+            "expiration_secs": None,
+            "overwrite_files": True,
+        },
+    },
+}
 
 # Logging Configuration (Production)
 LOGGING = {

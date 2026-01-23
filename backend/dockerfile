@@ -6,6 +6,40 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=core.settings.prod \
     PYTHONPATH=/app
 
+# Accept build arguments for environment variables
+ARG SECRET_KEY
+ARG DEBUG
+ARG ALLOWED_HOSTS
+ARG POSTGRES_NAME
+ARG POSTGRES_USER
+ARG POSTGRES_PASSWORD
+ARG POSTGRES_HOST
+ARG POSTGRES_PORT
+ARG CORS_ALLOWED_ORIGINS
+ARG CSRF_TRUSTED_ORIGINS
+ARG AZURE_ACCOUNT_NAME
+ARG AZURE_KEY
+ARG AZURE_CONTAINER
+ARG AZURE_CONNECTION_STRING
+ARG AZURE_STATIC_URL
+
+# Set them as environment variables
+ENV SECRET_KEY=$SECRET_KEY
+ENV DEBUG=$DEBUG
+ENV ALLOWED_HOSTS=$ALLOWED_HOSTS
+ENV POSTGRES_NAME=$POSTGRES_NAME
+ENV POSTGRES_USER=$POSTGRES_USER
+ENV POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+ENV POSTGRES_HOST=$POSTGRES_HOST
+ENV POSTGRES_PORT=$POSTGRES_PORT
+ENV CORS_ALLOWED_ORIGINS=$CORS_ALLOWED_ORIGINS
+ENV CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
+ENV AZURE_ACCOUNT_NAME=$AZURE_ACCOUNT_NAME
+ENV AZURE_KEY=$AZURE_KEY
+ENV AZURE_CONTAINER=$AZURE_CONTAINER
+ENV AZURE_CONNECTION_STRING=$AZURE_CONNECTION_STRING
+ENV AZURE_STATIC_URL=$AZURE_STATIC_URL
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 RUN apt-get update \
@@ -34,8 +68,8 @@ COPY --chown=django:django backend/ /app
 # Change working directory to /app where manage.py is located
 WORKDIR /app
 
-# Collect static files (now running from /app)
-RUN python manage.py collectstatic --noinput --settings=core.settings.prod
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD curl -f http://localhost:8000/health/ || exit 1
@@ -44,5 +78,5 @@ USER django
 
 EXPOSE 8000
 
-# Start Daphne ASGI server (running from /app directory)
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "core.asgi:application"]
+# Run entrypoint script (collectstatic + daphne)
+CMD ["/app/entrypoint.sh"]
