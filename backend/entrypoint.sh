@@ -5,4 +5,4 @@ set -e
 # python manage.py collectstatic --noinput
 python manage.py migrate
 echo "Starting Daphne ASGI server..."
-exec daphne -b 0.0.0.0 -p 80 --proxy-headers core.asgi:application
+exec daphne -b 0.0.0.0 -p 8000 --proxy-headers core.asgi:application
