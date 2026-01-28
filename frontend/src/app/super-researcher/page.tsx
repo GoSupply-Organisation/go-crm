@@ -7,48 +7,10 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { SuperResearcher } from '@/lib/types/super-researcher';
-
-const mockSuperResearchers: SuperResearcher[] = [
-  {
-    id: 1,
-    company: 'Tech Innovations Inc.',
-    website: 'https://techinnovations.com',
-    full_name: 'John Smith',
-    email: 'john@techinnovations.com',
-    phone_number: '+1 (555) 123-4567',
-    promoted: true,
-    is_active_lead: true,
-    lead_class: 'Leading',
-    notes: 'Key decision maker, highly interested in our enterprise solution',
-    address: '123 Tech Valley, San Francisco, CA 94102'
-  },
-  {
-    id: 2,
-    company: 'Global Solutions LLC',
-    website: 'https://globalsolutions.com',
-    full_name: 'Sarah Johnson',
-    email: 'sarah@globalsolutions.com',
-    phone_number: '+1 (555) 987-6543',
-    promoted: false,
-    is_active_lead: true,
-    lead_class: 'Growing Interest',
-    notes: 'Technical discussions ongoing, considering implementation',
-    address: '456 Business Park, New York, NY 10001'
-  },
-  {
-    id: 3,
-    company: 'Digital Dynamics',
-    website: 'https://digitaldynamics.com',
-    full_name: 'Michael Chen',
-    email: 'michael@digitaldynamics.com',
-    phone_number: '+1 (555) 456-7890',
-    promoted: true,
-    is_active_lead: false,
-    lead_class: 'Converted',
-    notes: 'Successfully converted, now a valued customer',
-    address: '789 Innovation Drive, Austin, TX 78701'
-  }
-];
+import { useSuperResearchers, useSuperResearcherOperations } from '@/lib/hooks/useSuperResearcher';
+import { SuperResearcherFilters } from '@/lib/types/super-researcher';
+import { Loader } from '@/components/ui/Loader';
+import { useRouter } from 'next/navigation';
 
 const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'purple' | 'green' | 'red'> = {
   'New': 'blue',
@@ -65,29 +27,100 @@ export default function SuperResearcherPage() {
   const [filterPromoted, setFilterPromoted] = useState<string>('all');
   const [filterActive, setFilterActive] = useState<string>('all');
   const [filterClass, setFilterClass] = useState<string>('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showGenerateLoading, setShowGenerateLoading] = useState(false);
 
-  const filteredResearchers = mockSuperResearchers.filter(researcher => {
+  const router = useRouter();
+
+  // Build filters object
+  const apiFilters: SuperResearcherFilters = {};
+  if (filterPromoted === 'promoted') apiFilters.promoted = true;
+  if (filterPromoted === 'not-promoted') apiFilters.promoted = false;
+  if (filterActive === 'active') apiFilters.is_active_lead = true;
+  if (filterActive === 'inactive') apiFilters.is_active_lead = false;
+  if (filterClass !== 'all') apiFilters.lead_class = filterClass;
+
+  const { researchers, loading, error, refetch } = useSuperResearchers(apiFilters);
+  const { generateLeads, deleteResearcher, togglePromoted, toggleActiveLead, updateLeadClass } = useSuperResearcherOperations();
+
+  // Filter by search term
+  const filteredResearchers = researchers.filter(researcher => {
     const matchesSearch =
-      researcher.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      researcher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      researcher.company.toLowerCase().includes(searchTerm.toLowerCase());
+      researcher.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      researcher.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      researcher.company?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesPromoted = filterPromoted === 'all' ||
-      (filterPromoted === 'promoted' && researcher.promoted) ||
-      (filterPromoted === 'not-promoted' && !researcher.promoted);
-
-    const matchesActive = filterActive === 'all' ||
-      (filterActive === 'active' && researcher.is_active_lead) ||
-      (filterActive === 'inactive' && !researcher.is_active_lead);
-
-    const matchesClass = filterClass === 'all' || researcher.lead_class === filterClass;
-
-    return matchesSearch && matchesPromoted && matchesActive && matchesClass;
+    return matchesSearch;
   });
 
-  const promotedCount = mockSuperResearchers.filter(r => r.promoted).length;
-  const activeLeadsCount = mockSuperResearchers.filter(r => r.is_active_lead).length;
-  const convertedCount = mockSuperResearchers.filter(r => r.lead_class === 'Converted').length;
+  const promotedCount = researchers.filter(r => r.promoted).length;
+  const activeLeadsCount = researchers.filter(r => r.is_active_lead).length;
+  const convertedCount = researchers.filter(r => r.lead_class === 'Converted').length;
+
+  const handleGenerateLeads = async () => {
+    try {
+      setShowGenerateLoading(true);
+      await generateLeads();
+      await refetch();
+      setShowGenerateLoading(false);
+    } catch (error) {
+      console.error('Failed to generate leads:', error);
+      setShowGenerateLoading(false);
+    }
+  };
+
+  const handleViewDetails = (id: number) => {
+    router.push(`/super-researcher/${id}`);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Are you sure you want to delete this researcher?')) {
+      try {
+        await deleteResearcher(id);
+        await refetch();
+      } catch (error) {
+        console.error('Failed to delete researcher:', error);
+      }
+    }
+  };
+
+  const handleTogglePromoted = async (id: number, currentPromoted: boolean) => {
+    try {
+      await togglePromoted(id, !currentPromoted);
+      await refetch();
+    } catch (error) {
+      console.error('Failed to toggle promoted status:', error);
+    }
+  };
+
+  const handleToggleActiveLead = async (id: number, currentActive: boolean) => {
+    try {
+      await toggleActiveLead(id, !currentActive);
+      await refetch();
+    } catch (error) {
+      console.error('Failed to toggle active lead status:', error);
+    }
+  };
+
+  if (loading && researchers.length === 0) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader size="lg" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error && researchers.length === 0) {
+    return (
+      <MainLayout>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -100,7 +133,16 @@ export default function SuperResearcherPage() {
               Advanced research insights and lead intelligence
             </p>
           </div>
-          <Button>Add Research Target</Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleGenerateLeads}
+              disabled={showGenerateLoading}
+            >
+              {showGenerateLoading ? <Loader size="sm" /> : 'Generate AI Leads'}
+            </Button>
+            <Button onClick={() => setShowAddModal(true)}>Add Research Target</Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -214,9 +256,39 @@ export default function SuperResearcherPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="secondary">View Details</Button>
-                    <Button size="sm" variant="secondary">Edit</Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleTogglePromoted(researcher.id, researcher.promoted)}
+                      >
+                        {researcher.promoted ? 'Unpromote' : 'Promote'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleToggleActiveLead(researcher.id, researcher.is_active_lead)}
+                      >
+                        {researcher.is_active_lead ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleViewDetails(researcher.id)}
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleDelete(researcher.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
