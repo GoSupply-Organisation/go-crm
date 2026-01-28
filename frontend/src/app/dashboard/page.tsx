@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user === null) {
-      router.push('/login');
+      router.push('auth/login');
     }
   }, [user, router]);
 

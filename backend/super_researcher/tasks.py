@@ -5,6 +5,7 @@ from .models import SuperResearcher
 from celery import shared_task
 from .engine.prompting import prompt, structure_prompt
 from openai import OpenAI
+from decouple import config
 
 @shared_task
 def periodic_lead_generation():
@@ -12,7 +13,7 @@ def periodic_lead_generation():
     Periodic task that automatically generates AI leads every 5 minutes.
     This task is designed to run without external arguments.
     """
-    client = OpenAI()
+    client = OpenAI(api_key=config("OPENAI_API_KEY"))
     model = "gpt-5-nano"  # Correct model name
     print("Starting periodic AI lead generation...")
 
@@ -72,7 +73,6 @@ def periodic_lead_generation():
             'error': str(e),
             'message': 'Periodic lead generation failed'
         }
-
 
 
 def run_researcher(prompt: str, task_id=None):
