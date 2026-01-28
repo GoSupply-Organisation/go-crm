@@ -25,7 +25,7 @@ class SuperResearcherSchema(ModelSchema):
 
 super_researcher_router = Router()
 
-@super_researcher_router.get("/current-lead/", response=SuperResearcherSchema, auth=django_auth)
+@super_researcher_router.get("/current-leads/", response=SuperResearcherSchema, auth=django_auth)
 def get_current_lead():
     lead = SuperResearcher.objects.all().first()
     return lead

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { SuperResearcher, SuperResearcherFormData, SuperResearcherFilters } from '../types/super-researcher';
+import { SuperResearcher, SuperResearcherUpdate, SuperResearcherFilters } from '../types/super-researcher';
 
 export const superResearcherApi = {
   // Get all super researchers with optional filtering
@@ -12,53 +12,19 @@ export const superResearcherApi = {
     return apiClient.get<SuperResearcher[]>('/api/super_researcher/', params);
   },
 
-  // Get current lead
-  getCurrentLead: async (): Promise<SuperResearcher> => {
-    return apiClient.get<SuperResearcher>('/api/super_researcher/current-lead/');
+  getCurrentLeads: async (): Promise<SuperResearcher> => {
+    return apiClient.get<SuperResearcher>('/api/super_researcher/current-leads/');
   },
-
-  // Get single super researcher by ID
-  getSuperResearcherById: async (id: number): Promise<SuperResearcher> => {
-    return apiClient.get<SuperResearcher>(`/api/super_researcher/${id}`);
-  },
-
-  // Generate leads using AI
-  generateLeads: async (): Promise<SuperResearcher[]> => {
+  
+  GenerateLeads: async (): Promise<SuperResearcher[]> => {
     return apiClient.get<SuperResearcher[]>('/api/super_researcher/generate-leads/');
   },
 
-  // Create new super researcher
-  createSuperResearcher: async (data: SuperResearcherFormData): Promise<SuperResearcher> => {
-    return apiClient.post<SuperResearcher>('/api/super_researcher/', data);
+  UpdateLeads: async (id: number, data: SuperResearcherUpdate): Promise<SuperResearcher> => {
+    return apiClient.put<SuperResearcher>(`/api/super_researcher/${id}/`, data);
   },
 
-  // Update existing super researcher
-  updateSuperResearcher: async (id: number, data: SuperResearcherFormData): Promise<SuperResearcher> => {
-    return apiClient.put<SuperResearcher>(`/api/super_researcher/${id}`, data);
+  DeleteLeads: async (id: number): Promise<void> => {
+    return apiClient.delete<void>(`/api/super_researcher/${id}/`);
   },
-
-  // Delete super researcher
-  deleteSuperResearcher: async (id: number): Promise<{ success: boolean }> => {
-    return apiClient.delete<{ success: boolean }>(`/api/super_researcher/${id}`);
-  },
-
-  // Toggle promoted status
-  togglePromoted: async (id: number, promoted: boolean): Promise<SuperResearcher> => {
-    return apiClient.put<SuperResearcher>(`/api/super_researcher/${id}`, { promoted });
-  },
-
-  // Toggle active lead status
-  toggleActiveLead: async (id: number, is_active_lead: boolean): Promise<SuperResearcher> => {
-    return apiClient.put<SuperResearcher>(`/api/super_researcher/${id}`, { is_active_lead });
-  },
-
-  // Update lead class
-  updateLeadClass: async (id: number, lead_class: string): Promise<SuperResearcher> => {
-    return apiClient.put<SuperResearcher>(`/api/super_researcher/${id}`, { lead_class });
-  },
-
-  // Update notes
-  updateNotes: async (id: number, notes: string): Promise<SuperResearcher> => {
-    return apiClient.put<SuperResearcher>(`/api/super_researcher/${id}`, { notes });
-  }
 };

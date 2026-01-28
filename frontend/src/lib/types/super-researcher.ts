@@ -5,8 +5,8 @@ export interface SuperResearcher {
   company: string;
   website: string;
   full_name: string;
-  email: string;
   phone_number: string;
+  email: string;
   promoted: boolean;
   is_active_lead: boolean;
   lead_class: LeadClassification;
@@ -14,16 +14,20 @@ export interface SuperResearcher {
   address: string;
 }
 
-export interface SuperResearcherFormData {
-  company: string;
+export interface SuperResearcherUpdate {
+  comapny?: string;
   website?: string;
-  full_name: string;
-  email: string;
+  full_name?: string;
   phone_number?: string;
+  email?: string;
+  promoted?: boolean;
+  is_active_lead?: boolean;
   lead_class?: LeadClassification;
   notes?: string;
   address?: string;
 }
+  
+
 
 export interface SuperResearcherFilters {
   promoted?: boolean;
