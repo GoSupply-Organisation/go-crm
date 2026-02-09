@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { SuperResearcher } from '@/lib/types/super-researcher';
+import { SuperResearcher, SuperResearcherFilters } from '@/lib/types/super-researcher';
 import { useSuperResearchers, useSuperResearcherOperations } from '@/lib/hooks/useSuperResearcher';
-import { SuperResearcherFilters } from '@/lib/types/super-researcher';
+import { LeadClassification } from '@/lib/types/contact';
 import { Loader } from '@/components/ui/Loader';
 import { useRouter } from 'next/navigation';
 
@@ -38,7 +38,7 @@ export default function SuperResearcherPage() {
   if (filterPromoted === 'not-promoted') apiFilters.promoted = false;
   if (filterActive === 'active') apiFilters.is_active_lead = true;
   if (filterActive === 'inactive') apiFilters.is_active_lead = false;
-  if (filterClass !== 'all') apiFilters.lead_class = filterClass;
+  if (filterClass !== 'all') apiFilters.lead_class = filterClass as LeadClassification;
 
   const { researchers, loading, error, refetch } = useSuperResearchers(apiFilters);
   const { generateLeads, deleteResearcher, togglePromoted, toggleActiveLead, updateLeadClass } = useSuperResearcherOperations();
