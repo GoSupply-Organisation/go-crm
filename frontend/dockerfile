@@ -21,8 +21,8 @@ WORKDIR /app
 # Force cache bust with current date/time (uncomment for production builds)
 RUN echo "Cache bust: $(date) - epoch: $(date +%s) - Sharp fix with libvips v2"
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Copy package files (build context is project root, not frontend/)
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
 
 # Install dependencies with pnpm
 RUN pnpm install --frozen-lockfile
@@ -43,7 +43,7 @@ RUN pnpm rebuild
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY frontend/ .
 
 # Accept build arguments for environment variables
 ARG NEXT_PUBLIC_MEILI_HOST
