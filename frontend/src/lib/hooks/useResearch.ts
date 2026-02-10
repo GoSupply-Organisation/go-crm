@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apexApi } from '../api/apex';
 import { superResearcherApi } from '../api/super-researcher';
-import { ApexContact, ApexFormData, ApexFilters } from '../types/apex';
-import { SuperResearcher, SuperResearcherFormData, SuperResearcherFilters } from '../types/super-researcher';
+import { ApexContact, ApexFilters } from '../types/apex';
+import { SuperResearcher, SuperResearcherFilters } from '../types/super-researcher';
 import { ApiError } from '../api/client';
 
 export function useApexResearch(filters?: ApexFilters) {

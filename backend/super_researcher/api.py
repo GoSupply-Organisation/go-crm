@@ -6,6 +6,9 @@ import json
 from .engine.prompting import prompt, structure_prompt
 from decouple import config
 from .tasks import run_researcher
+from django.http import JsonResponse
+from django.db.models import Q
+
 class SuperResearcherSchema(ModelSchema):
     class Meta:
         model = SuperResearcher
@@ -27,7 +30,9 @@ super_researcher_router = Router()
 
 @super_researcher_router.get("/current-leads/", response=SuperResearcherSchema, auth=django_auth)
 def get_current_lead():
-    lead = SuperResearcher.objects.all().first()
+    if lead:
+        lead = SuperResearcher.objects.all().first()
+    else: return JsonResponse({"message": "No leads found"})
     return lead
 
 @super_researcher_router.get("/generate-leads/", response=list[SuperResearcherSchema], auth=django_auth)
@@ -96,3 +101,35 @@ def periodic_lead_generation():
             'error': str(e),
             'message': 'Periodic lead generation failed'
         }
+
+@super_researcher_router.post("/delete-leads/", response=dict, auth=django_auth)
+def delete_lead(id: int):
+    try:
+        lead = SuperResearcher.objects.get(id=id)
+        lead.delete()
+        return {"success": True, "message": f"Lead with id {id} deleted successfully."}
+    except SuperResearcher.DoesNotExist:
+        return {"success": False, "message": f"Lead with id {id} does not exist."}
+
+@super_researcher_router.post("/update-leads/", response=SuperResearcherSchema, auth=django_auth)
+def contact_list(request):
+    lead_class = request.GET.get('lead_class')
+    search_query = request.GET.get('search')
+    sort_by = request.GET.get('sort_by', 'Full_name')
+
+    leads = SuperResearcher.objects.all()
+
+    if lead_class:
+        leads = leads.filter(lead_class=lead_class)
+
+    if search_query:
+        leads = leads.filter(
+            Q(Full_name__icontains=search_query) |
+            Q(company__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone_number__icontains=search_query)
+        )
+
+    leads = leads.order_by(sort_by)
+
+    return leads

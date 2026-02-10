@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { superResearcherApi } from '../api/super-researcher';
-import { SuperResearcher, SuperResearcherFormData, SuperResearcherFilters } from '../types/super-researcher';
+import { SuperResearcher, SuperResearcherUpdate, SuperResearcherFilters } from '../types/super-researcher';
+import { LeadClassification } from '../types/contact';
 import { ApiError } from '../api/client';
 
 export function useSuperResearchers(filters?: SuperResearcherFilters) {
@@ -71,13 +72,13 @@ export function useCurrentLead() {
     setLoading(true);
     setError(null);
     try {
-      const data = await superResearcherApi.getCurrentLead();
+      const data = await superResearcherApi.getCurrentLeads();
       setCurrentLead(data);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Failed to fetch current lead');
+        setError('Failed to fetch current leads');
       }
     } finally {
       setLoading(false);
@@ -95,7 +96,7 @@ export function useSuperResearcherOperations() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createResearcher = useCallback(async (data: SuperResearcherFormData) => {
+  const createResearcher = useCallback(async (data: SuperResearcher) => {
     setLoading(true);
     setError(null);
     try {
@@ -113,7 +114,7 @@ export function useSuperResearcherOperations() {
     }
   }, []);
 
-  const updateResearcher = useCallback(async (id: number, data: SuperResearcherFormData) => {
+  const updateResearcher = useCallback(async (id: number, data: SuperResearcher) => {
     setLoading(true);
     setError(null);
     try {
@@ -153,7 +154,7 @@ export function useSuperResearcherOperations() {
     setLoading(true);
     setError(null);
     try {
-      const result = await superResearcherApi.generateLeads();
+      const result = await superResearcherApi.GenerateLeads();
       return result;
     } catch (err) {
       if (err instanceof ApiError) {
@@ -203,7 +204,7 @@ export function useSuperResearcherOperations() {
     }
   }, []);
 
-  const updateLeadClass = useCallback(async (id: number, lead_class: string) => {
+  const updateLeadClass = useCallback(async (id: number, lead_class: LeadClassification) => {
     setLoading(true);
     setError(null);
     try {

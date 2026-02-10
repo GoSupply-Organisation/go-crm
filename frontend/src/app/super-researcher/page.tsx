@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { SuperResearcher, SuperResearcherFilters } from '@/lib/types/super-researcher';
-import { useSuperResearchers, useSuperResearcherOperations } from '@/lib/hooks/useSuperResearcher';
 import { LeadClassification } from '@/lib/types/contact';
+import { useSuperResearchers, useSuperResearcherOperations } from '@/lib/hooks/useSuperResearcher';
 import { Loader } from '@/components/ui/Loader';
 import { useRouter } from 'next/navigation';
 
@@ -217,7 +217,7 @@ export default function SuperResearcherPage() {
                       {researcher.promoted && (
                         <Badge variant="purple">Promoted</Badge>
                       )}
-                      <Badge variant={leadClassColors[researcher.lead_class]}>
+                      <Badge variant={leadClassColors[researcher.lead_class as keyof typeof leadClassColors]}>
                         {researcher.lead_class}
                       </Badge>
                       {researcher.is_active_lead && (

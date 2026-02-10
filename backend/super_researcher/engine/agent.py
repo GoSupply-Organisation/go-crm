@@ -24,20 +24,6 @@ model = LiteLlm(
     base_url=GLM_BASE_URL,
     response_format={"type": "json_object"}
 )
-
-model2 = LiteLlm(
-    # model = model_name_at_endpoint,
-    # base_url=api_base_url,
-    stream = True,
-    model = model_name,
-    api_key=config("GLM_API_KEY"),
-    base_url=GLM_BASE_URL,
-    response_format={"type": "json_object"}
-)
-if model == None:
-    model = model2
-
-
 class ResearchOutput(BaseModel):
     company: str = Field(..., description="The name of the company.")
     website: str = Field(..., description="The company's website URL.")
@@ -70,6 +56,7 @@ root_agent = LlmAgent(
         ),
         McpToolset(
             connection_params=StdioConnectionParams(
+                timeout=300,
                 server_params=StdioServerParameters(
                     command="uvx",
                     args=["duckduckgo-mcp", "serve"]
