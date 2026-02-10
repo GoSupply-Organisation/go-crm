@@ -56,7 +56,6 @@ ARG ECOM_MAIN_BASE_URL
 ARG NODE_ENV
 ARG NEXT_PUBLIC_SENTRY_DSN
 ARG SENTRY_DSN
-ARG NEXT_PUBLIC_API_URL
 
 # Set them as environment variables for the build
 ENV NEXT_PUBLIC_MEILI_HOST=$NEXT_PUBLIC_MEILI_HOST
@@ -69,7 +68,6 @@ ENV ECOM_MAIN_BASE_URL=$ECOM_MAIN_BASE_URL
 ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_DSN=$SENTRY_DSN
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # Environment variables are injected by CapRover, no need to copy .env files
 
 # Next.js collects completely anonymous telemetry data about general usage.
