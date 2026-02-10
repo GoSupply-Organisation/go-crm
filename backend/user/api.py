@@ -37,7 +37,7 @@ def user(request):
         "secret_fact": secret_fact
     }
  
-@auth_router.post("/register")
+
 def register(request, payload: schemas.SignInSchema):
     try:
         User.objects.create_user(username=payload.email, email=payload.email, password=payload.password)
