@@ -71,16 +71,19 @@ class ApiClient {
   }
 
   async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-    const url = new URL(`${this.baseUrl}${endpoint}`);
+    let url = `${this.baseUrl}${endpoint}`;
+
     if (params) {
+      const queryString = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          url.searchParams.append(key, value);
+          queryString.append(key, value);
         }
       });
+      url += `?${queryString.toString()}`;
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       method: 'GET',
       headers: this.getHeaders(),
       credentials: 'include',
