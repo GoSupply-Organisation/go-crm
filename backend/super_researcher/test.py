@@ -1,63 +1,115 @@
-import subprocess
-from pathlib import Path
+import asyncio
+import json
+import os
+from openai import OpenAI
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
-def run_researcher(prompt: str, task_id=None):
-    """
-    Executes the 'adk' CLI tool with a given prompt.
-    """
-    working_dir = Path(__file__).resolve().parents[2]
-    print("PATH: " + str(working_dir))
-    command_to_run_cli = ["adk", "run", "backend/super_researcher/engine"]
+reasoning_client = OpenAI(
+    base_url="http://127.0.0.1:8081/v1",
+    api_key="sk-no-key-required"
+)
+async def run_chat():
+    # 1. Initialize OpenAI Client
+    # 2. Configure the MCP Server (DuckDuckGo)
+    # We assume 'duckduckgo-mcp' is installed and in the path
+    server_params = StdioServerParameters(
+        command="uvx",
+        args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"], # Add any args if the specific tool requires them
+    )
+
+    print("Connecting to DuckDuckGo MCP Server...")
     
-    try:
-        print(f"Starting researcher process: {' '.join(command_to_run_cli)}")
-        print(f"Prompt: {prompt}")
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            # 3. List Tools from MCP Server
+            tools_list = await session.list_tools()
+            print(f"Found {len(tools_list.tools)} tools:")
+            
+            # 4. Convert MCP Tools to OpenAI Tool Schema
+            openai_tools = []
+            for tool in tools_list.tools:
+                print(f"- {tool.name}: {tool.description}")
+                openai_tools.append({
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.inputSchema
+                    }
+                })
 
-        process = subprocess.Popen(
-            command_to_run_cli,
-            cwd=working_dir,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+            # 5. Start the conversation loop
+            messages = [
+                {"role": "user", "content": "What is the latest news on the stock market?"}
+            ]
 
-        # Send the prompt and wait for response with a timeout
-        try:
-            stdout, stderr = process.communicate(input=prompt, timeout=60)
-            return_code = process.returncode
+            print("\nSending request to OpenAI...")
+            
+            # First call to OpenAI
+            response = reasoning_client.chat.completions.create(
+                model="local-model",
+                messages=messages,
+                tools=openai_tools,
+                tool_choice="auto", 
+            )
 
-            print(f"Process finished with return code: {return_code}")
+            response_message = response.choices[0].message
+            tool_calls = response_message.tool_calls
 
-            if stderr:
-                print("Error output:")
-                print(stderr)  # Print full stderr to see what went wrong
+            # 6. Handle Tool Calls (Agentic Loop)
+            # If the model wants to call a tool, we execute it and send the result back
+            while tool_calls:
+                print(f"OpenAI wants to call tools: {[tc.function.name for tc in tool_calls]}")
+                
+                # Append the model's request to history
+                messages.append(response_message)
 
-            if return_code == 0 and stdout:
-                print("Output received:")
-                print(stdout[:500])  # Print first 500 chars to avoid huge output
+                # Process each tool call
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
 
-            return {
-                'stdout': stdout,
-                'stderr': stderr,
-                'return_code': return_code,
-                'task_id': task_id  # Pass this as a parameter instead
-            }
-        except subprocess.TimeoutExpired:
-            print("Process timed out after 60 seconds")
-            process.kill()
-            stdout, stderr = process.communicate()
-            return {
-                'stdout': stdout,
-                'stderr': stderr,
-                'return_code': -2,
-                'task_id': task_id
-            }
+                    print(f"Executing MCP Tool: {function_name} with args {function_args}")
 
-    except FileNotFoundError:
-        error_msg = f"Error: 'adk' command was not found."
-        print(error_msg)
-        return {'stdout': None, 'stderr': error_msg, 'return_code': -1, 'task_id': task_id}
+                    # Call the MCP Tool
+                    result = await session.call_tool(function_name, arguments=function_args)
+                    
+                    # Extract text content from MCP result
+                    # MCP returns a list of content blocks (TextContent, ImageContent, etc.)
+                    # We assume text for this example
+                    result_text = ""
+                    for content in result.content:
+                        if content.type == 'text':
+                            result_text += content.text
 
-# Now this works:
-run_researcher(prompt="You are a helpful research assistant. What is 1+1?")
+                    print(f"Tool Result Snippet: {result_text[:100]}...")
+
+                    # Append the tool result to messages for OpenAI
+                    messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": result_text,
+                    })
+
+                # Call OpenAI again with the tool results
+                print("Sending tool results back to OpenAI...")
+                response = reasoning_client.chat.completions.create(
+                    model="local-model",
+                    messages=messages,
+                )
+                
+                # Update variables for the loop check
+                response_message = response.choices[0].message
+                tool_calls = response_message.tool_calls
+
+            # 7. Print Final Answer
+            print("\n--- Final Response ---")
+            print(response_message.content)
+
+if __name__ == "__main__":
+    asyncio.run(run_chat())
+    

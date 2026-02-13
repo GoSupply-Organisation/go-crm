@@ -17,11 +17,7 @@ vector_size = 2560
 distance_metric = models.Distance.COSINE
 qdrant_client = QdrantClient(host=host, port=port)
 
-qdrant_client.create_collection(
-    collection_name=collection_name,
-            vectors_config=models.VectorParams(size=vector_size, distance=distance_metric),
 
-)
 def content_id(text):
     return str(uuid.UUID(hashlib.md5(text.encode()).hexdigest()))
 
