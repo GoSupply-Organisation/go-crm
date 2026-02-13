@@ -5,7 +5,7 @@ import os
 from openai import OpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from prompting import reliability_prompt
+from prompting import reliability_prompt, search_system_prompt
 from datetime import datetime   
 
 current_datetime = datetime.now()   
@@ -53,8 +53,11 @@ async def run_chat():
                 })
 
             # 5. Start the conversation loop
+
+
             messages = [
-                {"role": "user", "content": "What is the latest news on the stock market, the date today is the 13th of feburary 2026"}
+                {"role": "system", "content": search_system_prompt},
+                {"role": "user", "content": "What is the latest news on the stock market?"}
             ]
 
             # First call to OpenAI
@@ -63,17 +66,8 @@ async def run_chat():
                 messages=messages,
                 temperature=0.4,
                 tools=openai_tools,
-                tool_choice="auto", 
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ToolCall",
-                        "description": "A structured response containing content and a link",
-                        "schema": ToolCall.model_json_schema(),
-                        "strict": True
-                    }
-                }            
-                )
+                tool_choice="auto"
+            )
 
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
@@ -104,7 +98,7 @@ async def run_chat():
                         if content.type == 'text':
                             result_text += content.text
 
-                    print(f"Tool Result Snippet: {result_text[:100]}...")
+                    print(f"Tool Result Snippet: {result_text}...")
 
                     # Append the tool result to messages for OpenAI
                     messages.append({
@@ -114,12 +108,13 @@ async def run_chat():
                         "content": result_text,
                     })
 
+                # Get new response from OpenAI after tool results
                 response = reasoning_client.chat.completions.create(
                     model="local-model",
                     messages=messages,
-                    
+                    temperature=0.4
                 )
-                
+
                 # Update variables for the loop check
                 response_message = response.choices[0].message
                 tool_calls = response_message.tool_calls
@@ -134,11 +129,24 @@ async def run_chat():
                 {"role": "user", "content": response_message.content}
             ]
 
+            class ReliabilityResponse(BaseModel):
+                source: str
+                score: int
+
             # This ranks the reliablity and urgency of the news articles and returns a prioritized list.
             reliablity = reasoning_client.chat.completions.create(
                 model="local-model",
                 messages=reli_messages,
                 temperature=0.1,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "ReliabilityResponse",
+                        "description": "A response containing source and reliability score",
+                        "schema": ReliabilityResponse.model_json_schema(),
+                        "strict": True
+                    }
+                }
             )
 
             print("\n--- News Scores ---")
