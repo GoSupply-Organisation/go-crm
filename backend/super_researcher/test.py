@@ -1,48 +1,33 @@
-from pydantic import BaseModel, Field
-import asyncio
-import json
-import os
 from openai import OpenAI
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from prompting import reliability_prompt, search_system_prompt
-from datetime import datetime   
-
-current_datetime = datetime.now()   
-
-print(current_datetime.time())
-
-
-reasoning_client = OpenAI(
+from mcp.client import ClientSession, StdioServerParameters, stdio_client
+import asyncio
+from .prompting import search_system_prompt
+import json
+client = OpenAI(
     base_url="http://127.0.0.1:8081/v1",
     api_key="sk-no-key-required"
 )
-async def run_chat():
-    # 1. Initialize OpenAI Client
-    # 2. Configure the MCP Server (DuckDuckGo)
-    # We assume 'duckduckgo-mcp' is installed and in the path
-    server_params = StdioServerParameters(
-        command="uvx",
-        args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"], # Add any args if the specific tool requires them
-    )
 
-    class ToolCall(BaseModel):
-        content: str
-        link: str
+server_params = StdioServerParameters(
+    command="uvx",
+    args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"],
+    env= None
+)
 
+async def run_chat_loop():
+    print("Starting MCP Server (DuckDuckGo)...")
     
+    # 2. Start the MCP Server as a subprocess
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             
-            # 3. List Tools from MCP Server
-            tools_list = await session.list_tools()
-            print(f"Found {len(tools_list.tools)} tools:")
+            # 3. Discover tools from MCP and convert to OpenAI format
+            print("Discovering tools...")
+            mcp_tools = await session.list_tools()
             
-            # 4. Convert MCP Tools to OpenAI Tool Schema
             openai_tools = []
-            for tool in tools_list.tools:
-                print(f"- {tool.name}: {tool.description}")
+            for tool in mcp_tools.tools:
                 openai_tools.append({
                     "type": "function",
                     "function": {
@@ -52,109 +37,62 @@ async def run_chat():
                     }
                 })
 
-            # 5. Start the conversation loop
+            print(f"Found {len(openai_tools)} tools: {[t['function']['name'] for t in openai_tools]}")
 
-
+            # Chat loop
             messages = [
                 {"role": "system", "content": search_system_prompt},
                 {"role": "user", "content": "What is the latest news on the stock market?"}
             ]
-
-            # First call to OpenAI
-            response = reasoning_client.chat.completions.create(
+            
+            # 4. Call OpenAI
+            response = client.chat.completions.create(
                 model="local-model",
                 messages=messages,
-                temperature=0.4,
                 tools=openai_tools,
-                tool_choice="auto"
             )
+            
+            assistant_message = response.choices[0].message
+            messages.append(assistant_message)
 
-            response_message = response.choices[0].message
-            tool_calls = response_message.tool_calls
-
-            # 6. Handle Tool Calls (Agentic Loop)
-            # If the model wants to call a tool, we execute it and send the result back
-            while tool_calls:
-                print(f"OpenAI wants to call tools: {[tc.function.name for tc in tool_calls]}")
-                
-                # Append the model's request to history
-                messages.append(response_message)
-
-                # Process each tool call
-                for tool_call in tool_calls:
-                    function_name = tool_call.function.name
-                    function_args = json.loads(tool_call.function.arguments)
-
-                    print(f"Executing MCP Tool: {function_name} with args {function_args}")
-
-                    # Call the MCP Tool
-                    result = await session.call_tool(function_name, arguments=function_args)
+            # 5. Check if OpenAI wants to call a tool
+            if assistant_message.tool_calls:
+                for tool_call in assistant_message.tool_calls:
+                    func_name = tool_call.function.name
+                    func_args = json.loads(tool_call.function.arguments)
                     
-                    # Extract text content from MCP result
-                    # MCP returns a list of content blocks (TextContent, ImageContent, etc.)
-                    # We assume text for this example
-                    result_text = ""
-                    for content in result.content:
-                        if content.type == 'text':
-                            result_text += content.text
+                    print(f"-> OpenAI requested tool: {func_name} with args {func_args}")
+                    
+                    # 6. Execute the tool call on the MCP Server
+                    result = await session.call_tool(func_name, arguments=func_args)
+                    
+                    # MCP returns a list of content blocks (text, images, etc.)
+                    # We assume text content for this integration
+                    result_text = "".join([c.text for c in result.content if hasattr(c, 'text')])
+                    
+                    print(f"-> MCP Result: {result_text[:100]}...")
 
-                    print(f"Tool Result Snippet: {result_text}...")
-
-                    # Append the tool result to messages for OpenAI
+                    # 7. Feed the result back to OpenAI
                     messages.append({
-                        "tool_call_id": tool_call.id,
                         "role": "tool",
-                        "name": function_name,
-                        "content": result_text,
+                        "tool_call_id": tool_call.id,
+                        "content": result_text
                     })
-
-                # Get new response from OpenAI after tool results
-                response = reasoning_client.chat.completions.create(
+                
+                # 8. Ask OpenAI to generate the final answer based on tool result
+                final_response = client.chat.completions.create(
                     model="local-model",
                     messages=messages,
-                    temperature=0.4
+                    tools=openai_tools,
                 )
-
-                # Update variables for the loop check
-                response_message = response.choices[0].message
-                tool_calls = response_message.tool_calls
-
-            # 7. Print Final Answer
-            print("\n--- Final Response ---")
-            print(response_message.content)
-
-
-            reli_messages = [
-                {"role": "system", "content": reliability_prompt},
-                {"role": "user", "content": response_message.content}
-            ]
-
-            class ReliabilityResponse(BaseModel):
-                source: str
-                score: int
-
-            # This ranks the reliablity and urgency of the news articles and returns a prioritized list.
-            reliablity = reasoning_client.chat.completions.create(
-                model="local-model",
-                messages=reli_messages,
-                temperature=0.1,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ReliabilityResponse",
-                        "description": "A response containing source and reliability score",
-                        "schema": ReliabilityResponse.model_json_schema(),
-                        "strict": True
-                    }
-                }
-            )
-
-            print("\n--- News Scores ---")
-            print(reliablity.choices[0].message.content)
-
-
-
+                
+                final_message = final_response.choices[0].message
+                print(f"\nAssistant: {final_message.content}")
+                messages.append(final_message)
+            else:
+                # No tool call, just standard reply
+                print(f"\nAssistant: {assistant_message.content}")
 
 if __name__ == "__main__":
-    asyncio.run(run_chat())
-    
+    # Ensure you have OPENAI_API_KEY set in your environment
+        asyncio.run(run_chat_loop())
