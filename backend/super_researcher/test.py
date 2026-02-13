@@ -117,6 +117,7 @@ async def run_chat():
                 response = reasoning_client.chat.completions.create(
                     model="local-model",
                     messages=messages,
+                    
                 )
                 
                 # Update variables for the loop check
@@ -128,7 +129,7 @@ async def run_chat():
             print(response_message.content)
 
 
-            messages = [
+            reli_messages = [
                 {"role": "system", "content": reliability_prompt},
                 {"role": "user", "content": response_message.content}
             ]
@@ -136,14 +137,12 @@ async def run_chat():
             # This ranks the reliablity and urgency of the news articles and returns a prioritized list.
             reliablity = reasoning_client.chat.completions.create(
                 model="local-model",
-                messages=messages,
-                temperature=0.1
+                messages=reli_messages,
+                temperature=0.1,
             )
 
             print("\n--- News Scores ---")
             print(reliablity.choices[0].message.content)
-
-
 
 
 
