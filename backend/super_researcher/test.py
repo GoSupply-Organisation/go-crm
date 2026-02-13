@@ -1,9 +1,17 @@
+from pydantic import BaseModel, Field
 import asyncio
 import json
 import os
 from openai import OpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from prompting import reliability_prompt
+from datetime import datetime   
+
+current_datetime = datetime.now()   
+
+print(current_datetime.time())
+
 
 reasoning_client = OpenAI(
     base_url="http://127.0.0.1:8081/v1",
@@ -18,7 +26,10 @@ async def run_chat():
         args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"], # Add any args if the specific tool requires them
     )
 
-    print("Connecting to DuckDuckGo MCP Server...")
+    class ToolCall(BaseModel):
+        content: str
+        link: str
+
     
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -43,18 +54,26 @@ async def run_chat():
 
             # 5. Start the conversation loop
             messages = [
-                {"role": "user", "content": "What is the latest news on the stock market?"}
+                {"role": "user", "content": "What is the latest news on the stock market, the date today is the 13th of feburary 2026"}
             ]
 
-            print("\nSending request to OpenAI...")
-            
             # First call to OpenAI
             response = reasoning_client.chat.completions.create(
                 model="local-model",
                 messages=messages,
+                temperature=0.4,
                 tools=openai_tools,
                 tool_choice="auto", 
-            )
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "ToolCall",
+                        "description": "A structured response containing content and a link",
+                        "schema": ToolCall.model_json_schema(),
+                        "strict": True
+                    }
+                }            
+                )
 
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
@@ -95,8 +114,6 @@ async def run_chat():
                         "content": result_text,
                     })
 
-                # Call OpenAI again with the tool results
-                print("Sending tool results back to OpenAI...")
                 response = reasoning_client.chat.completions.create(
                     model="local-model",
                     messages=messages,
@@ -109,6 +126,27 @@ async def run_chat():
             # 7. Print Final Answer
             print("\n--- Final Response ---")
             print(response_message.content)
+
+
+            messages = [
+                {"role": "system", "content": reliability_prompt},
+                {"role": "user", "content": response_message.content}
+            ]
+
+            # This ranks the reliablity and urgency of the news articles and returns a prioritized list.
+            reliablity = reasoning_client.chat.completions.create(
+                model="local-model",
+                messages=messages,
+                temperature=0.1
+            )
+
+            print("\n--- News Scores ---")
+            print(reliablity.choices[0].message.content)
+
+
+
+
+
 
 if __name__ == "__main__":
     asyncio.run(run_chat())
