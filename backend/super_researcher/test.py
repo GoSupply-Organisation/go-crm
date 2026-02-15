@@ -1,7 +1,8 @@
 from openai import OpenAI
-from mcp.client import ClientSession, StdioServerParameters, stdio_client
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 import asyncio
-from .prompting import search_system_prompt
+from prompting import search_system_prompt
 import json
 client = OpenAI(
     base_url="http://127.0.0.1:8081/v1",
