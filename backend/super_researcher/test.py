@@ -57,7 +57,7 @@ async def run_chat_loop():
             messages.append(assistant_message)
 
             # 5. Check if OpenAI wants to call a tool
-            if assistant_message.tool_calls:
+            try: 
                 for tool_call in assistant_message.tool_calls:
                     func_name = tool_call.function.name
                     func_args = json.loads(tool_call.function.arguments)
@@ -90,10 +90,11 @@ async def run_chat_loop():
                 final_message = final_response.choices[0].message
                 print(f"\nAssistant: {final_message.content}")
                 messages.append(final_message)
-            else:
-                # No tool call, just standard reply
-                print(f"\nAssistant: {assistant_message.content}")
+                json.load(final_message.content)
+            
+            except Exception as e:
+                print(f"  Search error: {e}")
+
 
 if __name__ == "__main__":
-    # Ensure you have OPENAI_API_KEY set in your environment
         asyncio.run(run_chat_loop())

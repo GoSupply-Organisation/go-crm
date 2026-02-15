@@ -1,6 +1,5 @@
 import time
 import asyncio
-from qdrant_client import QdrantClient, models
 from openai import OpenAI
 import uuid
 import hashlib

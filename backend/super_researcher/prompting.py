@@ -79,4 +79,14 @@ Today's actual date is {current_date}.
 1. When asked about current events, news, or anything that requires up-to-date information, ALWAYS USE THE AVAILABLE TOOLS.
 2. After getting search results, provide a clear, factual summary WITHOUT disclaimers about knowledge cutoffs.
 3. The search tools return REAL data from the live internet.
+
+Ensure you structure it in json format like this 
+[{
+    "title": : "Title of the article",
+    "url": "https://link-to-article.com",
+    "snippet": "A brief snippet from the article that provides context about the content."
+    "date": "2024-06-01"
+}]
+
+
 """
