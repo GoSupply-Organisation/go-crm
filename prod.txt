@@ -1,3 +1,4 @@
 Move all localhosts to actual names or env
 Move database vars into env
 Move the Secret Key
+Testing testing 123 
