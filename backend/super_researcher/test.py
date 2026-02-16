@@ -6,7 +6,7 @@ import json
 import weaviate
 from weaviate.classes.config import Configure
 from weaviate.util import generate_uuid5
-from prompting import search_system_prompt, reliability_prompt, urgency_prompt
+from prompting import search_system_prompt, reliability_prompt, urgency_prompt, question
 
 # Initialize clients
 search_client = OpenAI(
@@ -59,181 +59,153 @@ async def run_chat_loop():
             try:
                 # Clean slate for this example
                 if db_client.collections.exists("Question"):
-                    db_client.collections.delete("Question")
 
-                questions = db_client.collections.create(
-                    name="Question",
-                    vector_config=Configure.Vectors.text2vec_openai(
-                        base_url="http://host.docker.internal:8082",
-                        model="qwen3-4b-embedding",
-                    ),
-                )
+                    questions = db_client.collections.create(
+                        name="Question",
+                        vector_config=Configure.Vectors.text2vec_openai(
+                            base_url="http://host.docker.internal:8082",
+                            model="qwen3-4b-embedding",
+                        ),
+                    )
 
-                # Chat loop
-                messages = [
-                    {"role": "system", "content": search_system_prompt},
-                    {"role": "user", "content": "What is the latest news on the stock market?"}
-                ]
-                user_query = messages[-1]["content"]
+                    # Chat loop
+                    messages = [
+                        {"role": "system", "content": search_system_prompt},
+                        {"role": "user", "content": question}
+                    ]
 
-                # Call OpenAI to get search results
-                search_response = search_client.chat.completions.create(
-                    model="local-model",
-                    messages=messages,
-                    tools=openai_tools,
-                )
+                    # Call OpenAI to get search results
+                    search_response = search_client.chat.completions.create(
+                        model="local-model",
+                        messages=messages,
+                        tools=openai_tools,
+                    )
 
-                assistant_message = search_response.choices[0].message
-                messages.append(assistant_message)
+                    assistant_message = search_response.choices[0].message
+                    messages.append(assistant_message)
 
-                # Check if OpenAI wants to call a tool
-                for tool_call in assistant_message.tool_calls:
-                    func_name = tool_call.function.name
-                    func_args = json.loads(tool_call.function.arguments)
+                    # Check if OpenAI wants to call a tool
+                    search_results = []
+                    for tool_call in assistant_message.tool_calls:
+                        func_name = tool_call.function.name
+                        func_args = json.loads(tool_call.function.arguments)
 
-                    print(f"-> OpenAI requested tool: {func_name} with args {func_args}")
+                        print(f"-> OpenAI requested tool: {func_name} with args {func_args}")
 
-                    # Execute the tool call on the MCP Server
-                    result = await session.call_tool(func_name, arguments=func_args)
+                        # Execute the tool call on the MCP Server
+                        result = await session.call_tool(func_name, arguments=func_args)
 
-                    # Extract text content from MCP result
-                    result_text = "".join([c.text for c in result.content if hasattr(c, 'text')])
+                        # Extract text content from MCP result (already in JSON format)
+                        result_text = "".join([c.text for c in result.content if hasattr(c, 'text')])
 
-                    print(f"-> MCP Result: {result_text[:100]}...")
+                        print(f"-> MCP Result: {result_text[:100]}...")
 
-                    # Feed the result back to OpenAI
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": result_text
-                    })
+                        # Parse the search results directly from MCP response
+                        search_results = json.loads(result_text)
+                        if isinstance(search_results, dict):
+                            search_results = [search_results]
 
-                # Get final answer from OpenAI
-                final_response = search_client.chat.completions.create(
-                    model="local-model",
-                    messages=messages,
-                    tools=openai_tools,
-                )
+                        # Feed the result back to OpenAI
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": result_text
+                        })
 
-                final_message = final_response.choices[0].message
-                print(f"\nAssistant: {final_message.content}")
+                    # Skip asking LLM to reformat - use raw results directly
+                    print(f"\nParsed {len(search_results)} items from search results.")
 
-                # Parse search results
-                search_results = json.loads(final_message.content)
-                if isinstance(search_results, dict):
-                    search_results = [search_results]
-
-                print(f"Parsed {len(search_results)} items from search results.")
-
-                # Perform reliability analysis on search results
-                reliability_response = search_client.chat.completions.create(
-                    model="local-model",
-                    messages=[
-                        {"role": "system", "content": reliability_prompt},
-                        {"role": "user", "content": final_message.content}
-                    ],
-                    tools=openai_tools,
-                )
-
-                reliability_message = reliability_response.choices[0].message
-                if reliability_message.content is None:
-                    # Model tried to call a tool instead
-                    print("Reliability model tried to call a tool, retrying without tools...")
+                    # Perform reliability analysis on search results
                     reliability_response = search_client.chat.completions.create(
                         model="local-model",
                         messages=[
                             {"role": "system", "content": reliability_prompt},
-                            {"role": "user", "content": final_message.content}
-                        ],
-                    )
-                    reliability_message = reliability_response.choices[0].message
-
-                reliability_data = json.loads(reliability_message.content)
-                print(f"\nReliability Analysis completed.")
-
-                # Create URL -> reliability score mapping
-                reliability_map = {r["url"]: r["score"] for r in reliability_data.get("rankings", [])}
-
-                # Perform urgency analysis for each result
-                print(f"Analyzing urgency for {len(search_results)} items...")
-                data_list = []
-
-                for item in search_results:
-                    urgency_response = search_client.chat.completions.create(
-                        model="local-model",
-                        messages=[
-                            {"role": "system", "content": urgency_prompt},
-                            {"role": "user", "content": f"Analyze urgency for: {json.dumps(item)}"}
+                            {"role": "user", "content": json.dumps(search_results)}
                         ],
                         tools=openai_tools,
                     )
 
-                    urgency_message = urgency_response.choices[0].message
-                    if urgency_message.content is None:
-                        # Model tried to call a tool instead
+                    reliability_message = reliability_response.choices[0].message
+    
+
+                    reliability_data = json.loads(reliability_message.content)
+                    print(f"\nReliability Analysis completed.")
+
+                    # Create URL -> reliability score mapping
+                    reliability_map = {r["url"]: r["score"] for r in reliability_data.get("rankings", [])}
+
+                    # Perform urgency analysis for each result
+                    print(f"Analyzing urgency for {len(search_results)} items...")
+                    data_list = []
+
+                    for item in search_results:
                         urgency_response = search_client.chat.completions.create(
                             model="local-model",
                             messages=[
                                 {"role": "system", "content": urgency_prompt},
                                 {"role": "user", "content": f"Analyze urgency for: {json.dumps(item)}"}
                             ],
+                            tools=openai_tools,
                         )
+
                         urgency_message = urgency_response.choices[0].message
 
-                    urgency_data = json.loads(urgency_message.content)
+                        urgency_data = json.loads(urgency_message.content)
 
-                    # Merge reliability score
-                    item_url = item.get("url")
-                    reliability_score = reliability_map.get(item_url, 5)  # Default to 5 if not found
+                        # Merge reliability score
+                        item_url = item.get("url")
+                        reliability_score = reliability_map.get(item_url, 5)  # Default to 5 if not found
 
-                    data_list.append({
-                        "title": item.get("title"),
-                        "url": item_url,
-                        "snippet": item.get("snippet"),
-                        "date": item.get("date"),
-                        "urgency_score": urgency_data.get("urgency_score", 0),
-                        "reliability_score": reliability_score,
-                        "total_score": float(reliability_score) * float(urgency_data.get("urgency_score", 0)),
-                        "top_urgency_indicators": urgency_data.get("top_urgency_indicators", [])
-                    })
+                        data_list.append({
+                            "title": item.get("title"),
+                            "url": item_url,
+                            "snippet": item.get("snippet"),
+                            "date": item.get("date"),
+                            "urgency_score": urgency_data.get("urgency_score", 0),
+                            "reliability_score": reliability_score,
+                            "total_score": float(reliability_score) * float(urgency_data.get("urgency_score", 0)),
+                            "top_urgency_indicators": urgency_data.get("top_urgency_indicators", [])
+                        })
 
-                # Load into Weaviate
-                print(f"Loading {len(data_list)} items into Weaviate...")
-                with questions.batch.dynamic() as batch:
-                    for d in data_list:
-                        if not d.get("url"):
-                            continue
+                    # Load into Weaviate
+                    print(f"Loading {len(data_list)} items into Weaviate...")
+                    with questions.batch.dynamic() as batch:
+                        for d in data_list:
+                            if not d.get("url"):
+                                continue
 
-                        object_id = generate_uuid5(d["url"])
+                            object_id = generate_uuid5(d["url"])
 
-                        batch.add_object(
-                            properties={
-                                "title": d.get("title", "No Title"),
-                                "url": d["url"],
-                                "snippet": d.get("snippet", ""),
-                                "date": d.get("date"),
-                                "urgency_score": d["urgency_score"],
-                                "reliability_score": d["reliability_score"],
-                                "total_score": d["total_score"],
-                                "top_indicators": d.get("top_urgency_indicators", [])
-                            },
-                            uuid=object_id
-                        )
+                            batch.add_object(
+                                properties={
+                                    "title": d.get("title", "No Title"),
+                                    "url": d["url"],
+                                    "snippet": d.get("snippet", ""),
+                                    "date": d.get("date"),
+                                    "urgency_score": d["urgency_score"],
+                                    "reliability_score": d["reliability_score"],
+                                    "total_score": d["total_score"],
+                                    "top_indicators": d.get("top_urgency_indicators", [])
+                                },
+                                uuid=object_id
+                            )
 
-                        if batch.number_errors > 10:
-                            print("Batch import stopped due to excessive errors.")
-                            break
+                            if batch.number_errors > 10:
+                                print("Batch import stopped due to excessive errors.")
+                                break
 
-                failed_objects = questions.batch.failed_objects
-                if failed_objects:
-                    print(f"Number of failed imports: {len(failed_objects)}")
-                    print(f"First failed object: {failed_objects[0]}")
+                    failed_objects = questions.batch.failed_objects
+                    if failed_objects:
+                        print(f"Number of failed imports: {len(failed_objects)}")
+                        print(f"First failed object: {failed_objects[0]}")
 
-                # Query results
-                response = questions.query.near_text(query=user_query, limit=2)
-                print(f"\nTop results for '{user_query}':")
-                for obj in response.objects:
-                    print(json.dumps(obj.properties, indent=2))
+                    # Query results
+                    response = questions.query.near_text(query=question, limit=2)
+                    print(f"\nTop results for '{question}':")
+                    for obj in response.objects:
+                        print(json.dumps(obj.properties, indent=2))
+                else:
+                    print("Weaviate collection 'Question' does not exist. Please create it before running the chat loop.")
 
             except Exception as e:
                 print(f"Error: {e}")
