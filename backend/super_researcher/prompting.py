@@ -81,12 +81,12 @@ Today's actual date is {current_date}.
 3. The search tools return REAL data from the live internet.
 
 Ensure you structure it in json format like this 
-[{
-    "title": : "Title of the article",
-    "url": "https://link-to-article.com",
-    "snippet": "A brief snippet from the article that provides context about the content."
-    "date": "2024-06-01"
-}]
+[{{
+  "title": "Title of the article",
+  "url": "https://link-to-article.com",
+  "snippet": "A brief snippet...",
+  "date": "2024-06-01"
+}}]
 
 
 """

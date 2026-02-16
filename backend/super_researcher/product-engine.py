@@ -6,7 +6,8 @@ import hashlib
 import json
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-
+import weaviate
+import weaviate.classes as wvc
 
 # Setup Qdrant Client
 host = "localhost"

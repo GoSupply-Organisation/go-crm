@@ -4,16 +4,37 @@ from mcp.client.stdio import stdio_client
 import asyncio
 from prompting import search_system_prompt
 import json
+import weaviate
+from weaviate.classes.config import Configure
+
 client = OpenAI(
     base_url="http://127.0.0.1:8081/v1",
     api_key="sk-no-key-required"
 )
+
+llm_client = OpenAI(
+    base_url="http://127.0.0.1:8082/v1",
+    api_key="sk-no-key-required"
+)
+
 
 server_params = StdioServerParameters(
     command="uvx",
     args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"],
     env= None
 )
+
+
+def get_embedding(text):
+    try:
+        response = llm_client.embeddings.create(
+            input=text,
+            model="qwen3-4b-embedding"
+        )
+        return response.data[0].embedding
+    except Exception as e:
+        print(f"Error generating embedding: {e}")
+        return None
 
 async def run_chat_loop():
     print("Starting MCP Server (DuckDuckGo)...")
@@ -90,10 +111,68 @@ async def run_chat_loop():
                 final_message = final_response.choices[0].message
                 print(f"\nAssistant: {final_message.content}")
                 messages.append(final_message)
-                json.load(final_message.content)
-            
+                db_client = weaviate.connect_to_local(
+                    headers={
+                        "X-OpenAI-Api-Key": "sk-no-key-required"
+                    }
+                )
+
+                if db_client.collections.exists("Question"):
+                    db_client.collections.delete("Question") # Clean slate for this example
+
+                questions = db_client.collections.create(
+                    name="Question",
+                    vector_config=Configure.Vectors.text2vec_openai(
+                        base_url="http://host.docker.internal:8082",
+                        model="qwen3-4b-embedding",
+                    ),
+                )
+
+
+                data_list = json.loads(final_message.content)
+
+                # Handle both single object and list of objects
+                if isinstance(data_list, dict):
+                    data_list = [data_list]
+
+                print(f"Parsed {len(data_list)} items from OpenAI response.")
+                print(data_list[:2])  # Print first 2 items for verification
+
+                if db_client.collections.exists("Article"):
+                    db_client.collections.delete("Article") # Clean slate for this example
+                
+                print("loading into weaviate")
+                with questions.batch.dynamic() as batch:
+                    for d in data_list:
+                        batch.add_object(
+                            {
+                                "title": d["title"],
+                                "url": d["url"],
+                                "snippet": d["snippet"],
+                                "date": d["date"],
+                            }
+                        )
+                        if batch.number_errors > 10:
+                            print("Batch import stopped due to excessive errors.")
+                            break
+                    
+                failed_objects = questions.batch.failed_objects
+                if failed_objects:
+                    print(f"Number of failed imports: {len(failed_objects)}")
+                    print(f"First failed object: {failed_objects[0]}")
+
+                response = questions.query.near_text(query="", limit=2)
+
+                for obj in response.objects:
+                    print(json.dumps(obj.properties, indent=2))
+
+
             except Exception as e:
                 print(f"  Search error: {e}")
+                db_client.close()
+
+            finally:
+                db_client.close()
 
 
 if __name__ == "__main__":
