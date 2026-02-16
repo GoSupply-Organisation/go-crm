@@ -70,16 +70,7 @@ Amazon/E-commerce: Check for "Currently Unavailable" or "Price Gouging" signals 
 Phase 3: Synthesis & Output Format
 Present all findings in a JSON structure optimized for lead generation:
 
-JSON
-[{{
-  "category": "Tender | Shortage | Market Signal",
-  "item_impacted": "Product or Service Name",
-  "location": "Specific Sydney Hospital or NSW LHD",
-  "urgency": "Low | Medium | Critical",
-  "source_url": "Direct link to source",
-  "key_contact": "Name or Department if available",
-  "strategy": "How to approach this lead"
-}}]
+
 Constraints:
 
 Date Awareness: Today is {current_date}. Prioritize 2026 data.
