@@ -2,10 +2,11 @@ from openai import OpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 import asyncio
-from prompting import search_system_prompt
+from prompting import search_system_prompt, reliability_prompt, urgency_prompt
 import json
 import weaviate
 from weaviate.classes.config import Configure
+from weaviate.util import generate_uuid5
 
 client = OpenAI(
     base_url="http://127.0.0.1:8081/v1",
@@ -68,13 +69,13 @@ async def run_chat_loop():
             ]
             
             # 4. Call OpenAI
-            response = client.chat.completions.create(
+            tool_ping = client.chat.completions.create(
                 model="local-model",
                 messages=messages,
                 tools=openai_tools,
             )
             
-            assistant_message = response.choices[0].message
+            assistant_message = tool_ping.choices[0].message
             messages.append(assistant_message)
 
             # 5. Check if OpenAI wants to call a tool
@@ -128,29 +129,60 @@ async def run_chat_loop():
                     ),
                 )
 
+                reliability = client.chat.completions.create(
+                    model="local-model",
+                    messages=[
+                        {"role": "system", "content": reliability_prompt},
+                        {"role": "user", "content": final_message.content}
+                    ],
+                    tools=openai_tools,
+                )
 
-                data_list = json.loads(final_message.content)
+                reliability_message = reliability.choices[0].message
 
-                # Handle both single object and list of objects
+                print(f"\nReliability Analysis: {reliability_message.content}")
+
+                urgency = client.chat.completions.create(
+                    model="local-model",
+                    messages=[
+                        {"role": "system", "content": urgency_prompt},
+                        {"role": "user", "content": f"On a scale of 1-10, how urgent is the information in this message: {reliability_message}"}
+                    ],
+                    tools=openai_tools,
+                )
+                urgency_message = urgency.choices[0].message
+
+                data_list = json.loads(urgency_message.content) 
+
+                # Handle single objects vs lists
                 if isinstance(data_list, dict):
                     data_list = [data_list]
 
-                print(f"Parsed {len(data_list)} items from OpenAI response.")
-                print(data_list[:2])  # Print first 2 items for verification
-
-                if db_client.collections.exists("Article"):
-                    db_client.collections.delete("Article") # Clean slate for this example
-                
-                print("loading into weaviate")
+                # 2. Get your reliability score (assuming it's a single float/int you already have)
+                # Let's say reliability_score = 8.5
+                print(f"Loading {len(data_list)} items into Weaviate...")
                 with questions.batch.dynamic() as batch:
                     for d in data_list:
+                        # Calculate total_score INSIDE the loop for each item
+                        u_score = d.get("urgency_score", 0)
+                        r_score = d.get("reliability_score", 0)
+                        total_score = float(r_score) * float(u_score)
+                        
+                        # Use URL as a unique ID to prevent duplicate entries
+                        object_id = generate_uuid5(d["url"])
+
                         batch.add_object(
-                            {
-                                "title": d["title"],
-                                "url": d["url"],
-                                "snippet": d["snippet"],
-                                "date": d["date"],
-                            }
+                            properties={
+                                "title": d.get("title", "No Title"),
+                                "url": d.get("url"),
+                                "snippet": d.get("snippet", ""),
+                                "date": d.get("date"), # Must be RFC3339 format or None
+                                "urgency_score": u_score,
+                                "reliability_score": r_score,
+                                "total_score": total_score,
+                                "top_indicators": d.get("top_urgency_indicators", [])
+                            },
+                            uuid=object_id
                         )
                         if batch.number_errors > 10:
                             print("Batch import stopped due to excessive errors.")
