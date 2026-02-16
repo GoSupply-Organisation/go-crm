@@ -114,11 +114,9 @@ Evaluate the text based on the following indicators:
 3. Identify the "Urgency Drivers" (keywords or events).
 4. Return ONLY a JSON object.
 
-Disclaimer: The reliablity is simply inherited from the reliability scorer, given in the inital prompt. Anything less than a 5 in reliability should be skipped over
 
 ## OUTPUT FORMAT
 {{
-    "reliability_score": 7,
     "urgency_score": 9,
     title: "Title of the article",
     url: "https://link-to-article.com",
