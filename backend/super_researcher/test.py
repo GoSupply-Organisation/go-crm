@@ -1,115 +1,36 @@
-from openai import OpenAI
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
 import asyncio
 import json
-import weaviate
-from weaviate.classes.config import Configure
-from weaviate.util import generate_uuid5
-from prompting import search_system_prompt, reliability_prompt, urgency_prompt, question
+from openai import AsyncOpenAI
+from mcp.client.stdio import stdio_client
+from mcp import ClientSession, StdioServerParameters
+from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
 
-# Initialize clients
-search_client = OpenAI(
+# ── YOUR INFERENCE ENGINE ──────────────────────────────
+client = AsyncOpenAI(
     base_url="http://127.0.0.1:8081/v1",
-    api_key="sk-no-key-required"
+    api_key="sk-no-key",
 )
 
-llm_client = OpenAI(
-    base_url="http://127.0.0.1:8082/v1",
-    api_key="sk-no-key-required"
+# ── MCP SERVER CONFIG ──────────────────────────────────
+MCP_PARAMS = StdioServerParameters(
+    command="python",
+    args=["server.py"],
+    cwd="/Users/zacharyaldin/Coding/Go-crm/backend/super_researcher"
 )
 
-# MCP server configuration
-server_params = StdioServerParameters(
-    command="uvx",
-    args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"],
-    env=None
-)
-
-
-
-async def execute_tool_call(session, tool_call, timeout=90.0): # Add timeout param
-    """Execute a single tool call with a timeout."""
-    func_name = tool_call.function.name
-    func_args = json.loads(tool_call.function.arguments)
-
-    try:
-        # Wrap the call in a timeout
-        result = await asyncio.wait_for(
-            session.call_tool(func_name, arguments=func_args), 
-            timeout=timeout
-        )
-        
-        result_text = "".join([c.text for c in result.content if hasattr(c, 'text')])
-        return result_text
-    except asyncio.TimeoutError:
-        print(f"Timeout: {func_name} took too long.")
-        return f"Error: Tool execution timed out after {timeout} seconds."
-    except Exception as e:
-        print(f"Tool call failed for {func_name}: {e}")
-        return f"Error: Tool execution failed: {str(e)}"
-
-async def llm_with_tools(client, model, messages, tools, session):
-    """
-    Execute LLM calls with tool support.
-    Returns the final content after handling all tool calls.
-    """
-    max_iterations = 10  # Limit tool calls to prevent infinite loops
-    iteration = 0
-
-    while iteration < max_iterations:
-        response = search_client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=tools,
-        )
-
-        message = response.choices[0].message
-        messages.append(message)
-
-        # If no tool calls, return the content
-        if not message.tool_calls:
-            return message.content
-
-        # Execute tool calls
-        for tool_call in message.tool_calls:
-            func_name = tool_call.function.name
-            print(f"-> Tool: {func_name}")
-
-            result_text = await execute_tool_call(session, tool_call, timeout=90.0)
-
-            # Truncate result to prevent context overflow
-            if len(result_text) > 2000:
-                result_text = result_text[:2000] + "... [truncated]"
-
-            print(f"-> Result length: {len(result_text)} chars")
-
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": result_text
-            })
-
-        iteration += 1
-
-    # Return whatever content we have after max iterations
-    return message.content if message.content else '{"error": "Max tool iterations reached"}'
-
-
-async def run_chat_loop():
-    print("Starting MCP Server (DuckDuckGo)...")
-
-    # Start the MCP Server as a subprocess
-    async with stdio_client(server_params) as (read, write):
+# ── MCP TOOLS INTEGRATION ──────────────────────────────
+async def get_mcp_tools():
+    """Connect to MCP server and get available tools in OpenAI format"""
+    async with stdio_client(MCP_PARAMS) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # Discover tools from MCP and convert to OpenAI format
-            print("Discovering tools...")
-            mcp_tools = await session.list_tools()
+            # Get tools from MCP server
+            tools_result = await session.list_tools()
 
+            # Convert MCP tools to OpenAI format
             openai_tools = []
-            for tool in mcp_tools.tools:
+            for tool in tools_result.tools:
                 openai_tools.append({
                     "type": "function",
                     "function": {
@@ -119,158 +40,165 @@ async def run_chat_loop():
                     }
                 })
 
-            print(f"Found {len(openai_tools)} tools: {[t['function']['name'] for t in openai_tools]}")
+            return openai_tools, session
 
-            # Initialize Weaviate client
-            db_client = weaviate.connect_to_local(
-                headers={"X-OpenAI-Api-Key": "sk-no-key-required"}
-            )
+# ── TOOL EXECUTION HANDLER ──────────────────────────────
+async def execute_tool_call(tool_call, session):
+    """Execute a tool call via MCP session and return the result"""
+    try:
+        result = await session.call_tool(
+            tool_call.function.name,
+            json.loads(tool_call.function.arguments)
+        )
+        # Extract content from MCP result
+        if result.content:
+            return result.content[0].text if hasattr(result.content[0], 'text') else str(result.content[0])
+        return str(result) 
+    except Exception as e:
+        return f"Error executing tool {tool_call.function.name}: {str(e)}"
 
-            try:
-                # Clean slate for this example
-                if db_client.collections.exists("Question"):
-                    db_client.collections.delete("Question")
+# ── RELIABILITY AGENT (WITH TOOL ACCESS) ────────────────
+async def reliability_agent(search_query: str, tools: list, session) -> dict:
+    """
+    Intakes search query → searches web → returns reliability rankings.
+    Has direct access to MCP tools.
+    """
+    messages = [
+        {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}"},
+        {"role": "user", "content": search_query}
+    ]
 
-                    questions = db_client.collections.create(
-                        name="Question",
-                        vector_config=Configure.Vectors.text2vec_openai(
-                            base_url="http://host.docker.internal:8082",
-                            model="qwen3-4b-embedding",
-                        ),
-                    )
+    max_iterations = 5
+    for iteration in range(max_iterations):
+        response = await client.chat.completions.create(
+            model="local-model",
+            messages=messages,
+            temperature=0.1,
+            max_tokens=2000,
+            tools=tools
+        )
 
-                    # Phase 1: Search
-                    print("\n=== PHASE 1: SEARCH ===")
-                    messages = [
-                        {"role": "system", "content": search_system_prompt},
-                        {"role": "user", "content": question}
-                    ]
+        message = response.choices[0].message
 
-                    search_response = search_client.chat.completions.create(
-                        model="local-model",
-                        messages=messages,
-                        tools=openai_tools,
-                    )
+        # If no tool calls, we're done
+        if not message.tool_calls:
+            break
 
-                    assistant_message = search_response.choices[0].message
-                    messages.append(assistant_message)
+        # Execute each tool call and append results
+        for tool_call in message.tool_calls:
+            result = await execute_tool_call(tool_call, session)
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [tool_call]
+            })
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result
+            })
 
-                    # Execute search tools
-                    search_results = []
-                    for tool_call in assistant_message.tool_calls:
-                        print(f"-> Search tool: {tool_call.function.name}")
-                        result = await session.call_tool(tool_call.function.name, arguments=json.loads(tool_call.function.arguments))
-                        result_text = "".join([c.text for c in result.content if hasattr(c, 'text')])
-                        search_results = json.loads(result_text)
-                        if isinstance(search_results, dict):
-                            search_results = [search_results]
-                        print(f"-> Found {len(search_results)} results")
+    # Extract final JSON response
+    final_response = message.content
+    final_response = final_response.replace("```json", "").replace("```", "").strip()
 
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": result_text
-                        })
+    try:
+        return json.loads(final_response)
+    except json.JSONDecodeError:
+        # Fallback: return raw content if JSON parsing fails
+        return {"raw_response": final_response}
 
-                    # Phase 2: Reliability Analysis
-                    print("\n=== PHASE 2: RELIABILITY ANALYSIS ===")
-                    reliability_messages = [
-                        {"role": "system", "content": reliability_prompt},
-                        {"role": "user", "content": json.dumps(search_results)}
-                    ]
+# ── URGENCY AGENT (WITH TOOL ACCESS) ────────────────────
+async def urgency_agent(reliability_data: dict, tools: list, session) -> dict:
+    """
+    Intakes reliability data → analyzes urgency via web search.
+    Has direct access to MCP tools.
+    """
+    # Build context from reliability data
+    context = json.dumps(reliability_data, indent=2)
 
-                    reliability_content = await llm_with_tools(
-                        search_client, "local-model", reliability_messages, openai_tools, session
-                    )
-                    reliability_data = json.loads(reliability_content)
-                    print(f"Reliability analysis completed. Rated {len(reliability_data.get('rankings', []))} items.")
+    messages = [
+        {"role": "system", "content": urgency_prompt},
+        {"role": "user", "content": f"Analyze the urgency of these findings:\n\n{context}"}
+    ]
 
-                    # Create URL -> reliability score mapping
-                    reliability_map = {r["url"]: r["score"] for r in reliability_data.get("rankings", [])}
+    max_iterations = 5
+    for iteration in range(max_iterations):
+        response = await client.chat.completions.create(
+            model="local-model",
+            messages=messages,
+            temperature=0.1,
+            max_tokens=2000,
+            tools=tools
+        )
 
-                    # Phase 3: Urgency Analysis
-                    print("\n=== PHASE 3: URGENCY ANALYSIS ===")
-                    data_list = []
+        message = response.choices[0].message
 
-                    for idx, item in enumerate(search_results, 1):
-                        print(f"\n[{idx}/{len(search_results)}] Analyzing: {item.get('title', 'unknown')[:50]}...")
+        # If no tool calls, we're done
+        if not message.tool_calls:
+            break
 
-                        urgency_messages = [
-                            {"role": "system", "content": urgency_prompt},
-                            {"role": "user", "content": f"Analyze urgency for: {json.dumps(item)}"}
-                        ]
+        # Execute each tool call and append results
+        for tool_call in message.tool_calls:
+            result = await execute_tool_call(tool_call, session)
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [tool_call]
+            })
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result
+            })
 
-                        urgency_content = await llm_with_tools(
-                            search_client, "local-model", urgency_messages, openai_tools, session
-                        )
-                        urgency_data = json.loads(urgency_content)
+    # Extract final JSON response
+    final_response = message.content
+    final_response = final_response.replace("```json", "").replace("```", "").strip()
 
-                        # Merge reliability score
-                        item_url = item.get("url")
-                        reliability_score = reliability_map.get(item_url, 5)
+    try:
+        return json.loads(final_response)
+    except json.JSONDecodeError:
+        return {"raw_response": final_response}
 
-                        data_list.append({
-                            "title": item.get("title"),
-                            "url": item_url,
-                            "snippet": item.get("snippet"),
-                            "date": item.get("date"),
-                            "urgency_score": urgency_data.get("urgency_score", 0),
-                            "reliability_score": reliability_score,
-                            "total_score": float(reliability_score) * float(urgency_data.get("urgency_score", 0)),
-                            "top_urgency_indicators": urgency_data.get("top_urgency_indicators", [])
-                        })
-                        print(f"  Urgency: {urgency_data.get('urgency_score', 0)}, Reliability: {reliability_score}, Total: {data_list[-1]['total_score']}")
+# ── MAIN PIPELINE ──────────────────────────────────────
+async def run_pipeline(search_query: str):
+    """
+    Full pipeline that:
+    1. Starts with a search query
+    2. Reliability agent searches and evaluates sources
+    3. Urgency agent analyzes urgency based on findings
+    """
+    print("🔍 Initializing MCP connection...")
+    tools, session = await get_mcp_tools()
+    print(f"✅ Loaded {len(tools)} tools: {[t['function']['name'] for t in tools]}")
 
-                    # Phase 4: Load into Weaviate
-                    print("\n=== PHASE 4: LOAD TO DB ===")
-                    print(f"Loading {len(data_list)} items into Weaviate...")
-                    with questions.batch.dynamic() as batch:
-                        for d in data_list:
-                            if not d.get("url"):
-                                continue
+    print("\n" + "="*60)
+    print("📊 STAGE 1: Reliability Agent")
+    print("="*60)
+    reliability_output = await reliability_agent(search_query, tools, session)
+    print(json.dumps(reliability_output, indent=2))
 
-                            object_id = generate_uuid5(d["url"])
-                            batch.add_object(
-                                properties={
-                                    "title": d.get("title", "No Title"),
-                                    "url": d["url"],
-                                    "snippet": d.get("snippet", ""),
-                                    "date": d.get("date"),
-                                    "urgency_score": d["urgency_score"],
-                                    "reliability_score": d["reliability_score"],
-                                    "total_score": d["total_score"],
-                                    "top_indicators": d.get("top_urgency_indicators", [])
-                                },
-                                uuid=object_id
-                            )
+    print("\n" + "="*60)
+    print("⚡ STAGE 2: Urgency Agent")
+    print("="*60)
+    urgency_output = await urgency_agent(reliability_output, tools, session)
+    print(json.dumps(urgency_output, indent=2))
 
-                            if batch.number_errors > 10:
-                                print("Batch import stopped due to excessive errors.")
-                                break
+    return {
+        "search_query": search_query,
+        "reliability": reliability_output,
+        "urgency": urgency_output
+    }
 
-                    failed_objects = questions.batch.failed_objects
-                    if failed_objects:
-                        print(f"Number of failed imports: {len(failed_objects)}")
-                        print(f"First failed object: {failed_objects[0]}")
-
-                    # Phase 5: Query from DB
-                    print("\n=== PHASE 5: QUERY FROM DB ===")
-                    response = questions.query.near_text(query=question, limit=2)
-                    print(f"Top results for '{question}':")
-                    for obj in response.objects:
-                        print(json.dumps(obj.properties, indent=2))
-
-                else:
-                    print("Weaviate collection 'Question' does not exist.")
-
-            except Exception as e:
-                print(f"Error: {e}")
-                import traceback
-                traceback.print_exc()
-
-            finally:
-                db_client.close()
-
-
+# ── RUN EXAMPLE ────────────────────────────────────────
 if __name__ == "__main__":
-    asyncio.run(run_chat_loop())
+    # The pipeline will do the searching - just provide a query
+    search_query = question
+
+    result = asyncio.run(run_pipeline(search_query))
+
+    print("\n" + "="*60)
+    print("📋 FINAL REPORT")
+    print("="*60)
+    print(json.dumps(result, indent=2))
