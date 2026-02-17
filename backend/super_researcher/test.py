@@ -4,11 +4,12 @@ from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
+from decouple import config
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 client = AsyncOpenAI(
-    base_url="http://127.0.0.1:8081/v1",
-    api_key="sk-no-key",
+    base_url="https://api.z.ai/api/paas/v4/",
+    api_key=config("GLM_API_KEY"),
 )
 
 # ── MCP SERVER CONFIG ──────────────────────────────────
@@ -16,83 +17,141 @@ MCP_PARAMS = StdioServerParameters(
     command="uvx",
     args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"],
 )
-async def mcp_tool_assess(params: StdioServerParameters):
-    async with stdio_client(params) as (read, write):
-            async with ClientSession(read, write) as session:
-                # Initialize the connection
-                await session.initialize()
-                
-                # 3. "Plug & Play": Get the tools automatically from the server
-                mcp_tools = await session.list_tools()
-                
-                # Convert MCP tools to OpenAI tool format
-                openai_tools = [
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": tool.name,
-                            "description": tool.description,
-                            "parameters": tool.inputSchema,
-                        }
-                    }
-                    for tool in mcp_tools.tools
-                ]
 
-# ── RELIABILITY AGENT (WITH TOOL ACCESS) ────────────────
+# ── HELPER: CONVERT MCP TOOLS TO OPENAI ───────────────────
+async def get_openai_tools(session: ClientSession):
+    """Fetches tools from the active MCP session and converts schema."""
+    mcp_tools = await session.list_tools()
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.inputSchema,
+            }
+        }
+        for tool in mcp_tools.tools
+    ]
+
+# ── RELIABILITY AGENT (REFACTORED) ──────────────────────
 async def reliability_agent(search_query: str) -> dict:
     """
-    Intakes search query → searches web → returns reliability rankings.
-    Has direct access to MCP tools.
+    Intakes search query -> searches web -> returns reliability rankings.
     """
-    messages = [
-        {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}"},
-        {"role": "user", "content": search_query}
-    ]
-    openai_tools = await mcp_tool_assess(MCP_PARAMS)
+    # 1. Open the connection and KEEP it open for the whole function
+    async with stdio_client(MCP_PARAMS) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            # 2. Get tools
+            openai_tools = await get_openai_tools(session)
+            
+            messages = [
+                {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}"},
+                {"role": "user", "content": search_query}
+            ]
 
-    response = await client.chat.completions.create(
-                model="local-model",
-                tools = openai_tools,
-                messages=messages,
-                temperature=0.1,
-                max_tokens=2000,
-            )
+            # 3. AGENTIC LOOP: Think -> Act -> Observe -> Repeat
+            while True:
+                response = await client.chat.completions.create(
+                    model="glm-5",
+                    tools=openai_tools,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=2000,
+                )
 
-    message = response.choices[0].message
-    try:
-        return json.loads(message.content)
-    except json.JSONDecodeError:
-        # Fallback: return raw content if JSON parsing fails
-        return {"raw_response": message.content}
+                message = response.choices[0].message
+                
+                # 4. Check if LLM wants to use tools
+                if message.tool_calls:
+                    # Append the assistant's decision to history
+                    messages.append(message)
+                    
+                    # Execute each tool call
+                    for tool_call in message.tool_calls:
+                        print(f"🔧 Calling Tool: {tool_call.function.name}")
+                        
+                        # Execute via MCP
+                        result = await session.call_tool(
+                            tool_call.function.name, 
+                            arguments=json.loads(tool_call.function.arguments)
+                        )
+                        
+                        # Append tool result to history
+                        # Note: MCP returns content as a list, we take the text
+                        tool_content = result.content[0].text if result.content else ""
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": tool_content
+                        })
+                    
+                    # Loop back to LLM with the new search results
+                    continue 
+                
+                else:
+                    # 5. No tool calls: LLM is done. Return content.
+                    try:
+                        return json.loads(message.content)
+                    except json.JSONDecodeError:
+                        return {"raw_response": message.content}
 
-# ── URGENCY AGENT (WITH TOOL ACCESS) ────────────────────
+# ── URGENCY AGENT (REFACTORED) ──────────────────────────
 async def urgency_agent(reliability_data: dict) -> dict:
     """
-    Intakes reliability data → analyzes urgency via web search.
-    Has direct access to MCP tools.
+    Intakes reliability data -> analyzes urgency via web search.
     """
-    # Build context from reliability data
     context = json.dumps(reliability_data, indent=2)
 
-    messages = [
-        {"role": "system", "content": urgency_prompt},
-        {"role": "user", "content": f"Analyze the urgency of these findings:\n\n{context}"}
-    ]
+    # 1. Open connection
+    async with stdio_client(MCP_PARAMS) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            
+            openai_tools = await get_openai_tools(session)
+            
+            messages = [
+                {"role": "system", "content": urgency_prompt},
+                {"role": "user", "content": f"Analyze the urgency of these findings:\n\n{context}"}
+            ]
 
-    response = await client.chat.completions.create(
-        model="local-model",
-        messages=messages,
-        temperature=0.1,
-        max_tokens=2000,
-        tools = await mcp_tool_assess(MCP_PARAMS)
-    )
+            # 2. AGENTIC LOOP
+            while True:
+                response = await client.chat.completions.create(
+                    model="glm-5",
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=2000,
+                    tools=openai_tools
+                )
 
-    message = response.choices[0].message
+                message = response.choices[0].message
 
-    try:
-        return json.loads(message.content)
-    except json.JSONDecodeError:
-        return {"raw_response": message.content}
+                if message.tool_calls:
+                    messages.append(message)
+                    for tool_call in message.tool_calls:
+                        print(f"🔧 Calling Tool: {tool_call.function.name}")
+                        
+                        result = await session.call_tool(
+                            tool_call.function.name, 
+                            arguments=json.loads(tool_call.function.arguments)
+                        )
+                        
+                        tool_content = result.content[0].text if result.content else ""
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": tool_content
+                        })
+                    continue
+                
+                else:
+                    try:
+                        return json.loads(message.content)
+                    except json.JSONDecodeError:
+                        return {"raw_response": message.content}
 
 # ── MAIN PIPELINE ──────────────────────────────────────
 async def run_pipeline(search_query: str):
@@ -102,7 +161,7 @@ async def run_pipeline(search_query: str):
     2. Reliability agent searches and evaluates sources
     3. Urgency agent analyzes urgency based on findings
     """
-    print("🔍 Initializing MCP connection...")
+    print("🔍 Initializing Pipeline...")
 
     print("\n" + "="*60)
     print("📊 STAGE 1: Reliability Agent")
@@ -124,9 +183,7 @@ async def run_pipeline(search_query: str):
 
 # ── RUN EXAMPLE ────────────────────────────────────────
 if __name__ == "__main__":
-    # The pipeline will do the searching - just provide a query
     search_query = question
-
     result = asyncio.run(run_pipeline(search_query))
 
     print("\n" + "="*60)
