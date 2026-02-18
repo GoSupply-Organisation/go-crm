@@ -4,14 +4,21 @@ from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
-from decouple import config
+import weaviate
+
+# ── WEAVIATE CONFIG ───────────────────────────────────
+weaviate_client = weaviate.connect_to_local()
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 client = AsyncOpenAI(
-    base_url="https://api.z.ai/api/paas/v4/",
-    api_key=config("GLM_API_KEY"),
+    base_url="http://127.0.0.1:8081/v1",
+    api_key="sk-no-key-required",
 )
 
+embed = AsyncOpenAI(
+    base_url="http://127.0.0.1:8082/v1",
+    api_key="sk-no-key-required",
+)
 # ── MCP SERVER CONFIG ──────────────────────────────────
 MCP_PARAMS = StdioServerParameters(
     command="uvx",
@@ -190,3 +197,4 @@ if __name__ == "__main__":
     print("📋 FINAL REPORT")
     print("="*60)
     print(json.dumps(result, indent=2))
+
