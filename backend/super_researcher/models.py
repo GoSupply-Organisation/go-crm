@@ -72,11 +72,3 @@ class SuperResearcher(models.Model):
             str: The company name, or full name if company not set.
         """
         return self.company if self.company else (self.full_name or 'Unnamed Lead')
-
-    class Meta:
-        """Meta options for SuperResearcher model.
-
-        Attributes:
-            ordering: Default ordering for queries by lead classification.
-        """
-        ordering = ['-lead_class', '-created_at']

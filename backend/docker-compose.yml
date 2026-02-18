@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Django Web Service (for development)
+  web:
+    build:
+      context: .
+      dockerfile: dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: go-crm
+      POSTGRES_USER: Go-crm
+      POSTGRES_PASSWORD: G0-Supply-C3RM-458
+    ports:
+      - "5432:5432"
+
+  # Redis Broker for Celery
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: dockerfile
+    command: celery -A core worker -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      DJANGO_SETTINGS_MODULE: core.settings.local
+
+  # Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: .
+      dockerfile: dockerfile
+    command: celery -A core beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      DJANGO_SETTINGS_MODULE: core.settings.local
+
+volumes:
+  postgres_data:
+  redis_data:

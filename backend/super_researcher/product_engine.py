@@ -10,24 +10,24 @@ from mcp.client.stdio import stdio_client
 from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
-client = AsyncOpenAI(
-    base_url="http://127.0.0.1:8081/v1",
-    api_key="sk-no-key-required",
-)
-# 
-embed = AsyncOpenAI(
-    base_url="http://127.0.0.1:8082/v1",
-    api_key="sk-no-key-required",
-)
-
 # client = AsyncOpenAI(
-#     base_url=config("GLM_BASE_URL"),
-#     api_key=config("GLM_API_KEY"),
+    # base_url="http://127.0.0.1:8081/v1",
+    # api_key="sk-no-key-required",
 # )
 
 # embed = AsyncOpenAI(
-#     api_key=config("OPENAI_API_KEY"),
+    # base_url="http://127.0.0.1:8082/v1",
+    # api_key="sk-no-key-required",
 # )
+
+client = AsyncOpenAI(
+    base_url=config("GLM_BASE_URL"),
+    api_key=config("GLM_API_KEY"),
+)
+
+embed = AsyncOpenAI(
+    api_key=config("OPENAI_API_KEY"),
+)
 
 # ── MCP SERVER CONFIG ──────────────────────────────────
 MCP_PARAMS = StdioServerParameters(

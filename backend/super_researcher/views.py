@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from .models import SuperResearcher
 from django.http import JsonResponse
 from django.shortcuts import render
-from .tasks import run_researcher
+from .tasks import product_engine_research
 from django.shortcuts import get_object_or_404
 
 def get_super_researcher_contacts(request):
@@ -32,43 +32,13 @@ def generate_ai_leads(request):
     Returns JSON response with task status.
     """
     try:
-        # Parse request body for custom prompt (optional)
-        try:
-            data = json.loads(request.body)
-            custom_prompt = data.get('prompt', None)
-        except (json.JSONDecodeError, AttributeError):
-            custom_prompt = None
-
-        # Default research prompt
-        default_prompt = """
-        Find high-quality B2B leads for a sales CRM system. Look for:
-        1. Company name and website
-        2. Contact person (full name)
-        3. Email address
-        4. Phone number
-        5. Physical address
-
-        Format each lead as a separate block with clear field labels:
-        Company: [company name]
-        Website: [website URL]
-        Contact: [full name]
-        Email: [email address]
-        Phone: [phone number]
-        Address: [full address]
-
-        Find 5-10 high-quality leads from various industries.
-        """
-
-        # Use custom prompt if provided, otherwise use default
-        research_prompt = custom_prompt if custom_prompt else default_prompt
-
         # Start the Celery task
-        task = run_researcher.delay(research_prompt)
+        task = product_engine_research.delay()
 
         return JsonResponse({
             'success': True,
             'task_id': task.id,
-            'message': 'AI lead generation started successfully',
+            'message': 'AI research pipeline started successfully',
             'status': 'processing'
         })
 
@@ -76,7 +46,7 @@ def generate_ai_leads(request):
         return JsonResponse({
             'success': False,
             'error': str(e),
-            'message': 'Failed to start AI lead generation'
+            'message': 'Failed to start AI research pipeline'
         }, status=500)
     
 

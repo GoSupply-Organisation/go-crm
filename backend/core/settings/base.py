@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'ninja',
     'corsheaders',
     "anymail",
+    'django_celery_beat',
 
     # Created Apps
     "contacts",
@@ -129,10 +130,11 @@ TWILIO_AUTH = config('TWILIO_AUTH_TOKEN')
 # Celery Configuration
 CELERY_TIMEZONE = config('CELERY_TIMEZONE', default='Australia/Sydney')
 CELERY_BROKER_URL = config('REDIS_HOST')
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_BEAT_SCHEDULE = {
-    "RunSuperResearcher": {
-        "task": "super_researcher.tasks.periodic_lead_generation",
-        "schedule": crontab(minute=5),  # Run every 5 minutes
+    "ProductEngineResearch": {
+        "task": "super_researcher.tasks.product_engine_research",
+        "schedule": crontab(minute=0),  # Run every hour
     },
 }
 
