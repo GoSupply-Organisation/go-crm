@@ -4,10 +4,10 @@ from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
-import weaviate
+# import weaviate
 
 # ── WEAVIATE CONFIG ───────────────────────────────────
-weaviate_client = weaviate.connect_to_local()
+# weaviate_client = weaviate.connect_to_local()
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 client = AsyncOpenAI(
@@ -101,6 +101,7 @@ async def reliability_agent(search_query: str) -> dict:
                 else:
                     # 5. No tool calls: LLM is done. Return content.
                     try:
+                        print(json.loads(message.content))
                         return json.loads(message.content)
                     except json.JSONDecodeError:
                         return {"raw_response": message.content}
@@ -156,6 +157,7 @@ async def urgency_agent(reliability_data: dict) -> dict:
                 
                 else:
                     try:
+                        print(json.loads(message.content))
                         return json.loads(message.content)
                     except json.JSONDecodeError:
                         return {"raw_response": message.content}
@@ -176,11 +178,25 @@ async def run_pipeline(search_query: str):
     reliability_output = await reliability_agent(search_query)
     print(json.dumps(reliability_output, indent=2))
 
+    for r_item in reliability_output['rankings']:
+        score = r_item['score']
+        url = r_item['url']
+        verification = r_item['verification_method']
+
+        print(f"Found Score: {score} for URL: {url} (Verification: {verification})")
+
     print("\n" + "="*60)
     print("⚡ STAGE 2: Urgency Agent")
     print("="*60)
     urgency_output = await urgency_agent(reliability_output)
-    print(json.dumps(urgency_output, indent=2))
+    print(json.dumps(urgency_output, indent=2)) 
+
+    for u_item in urgency_output:
+        u_score = u_item['urgency_score']
+        indicators = u_item['top_urgency_indicators']
+        summary = u_item['summary']
+        print(f"Urgency Score: {u_score} (Top Indicators: {indicators})")
+        print(f"Summary: {summary}")
 
     return {
         "search_query": search_query,
