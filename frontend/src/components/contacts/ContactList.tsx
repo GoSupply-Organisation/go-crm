@@ -5,15 +5,25 @@ import { Contact } from '@/lib/types/contact';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
+/** Props interface for the ContactList component. */
 interface ContactListProps {
+  /** Array of contacts to display. */
   contacts: Contact[];
+  /** Whether the list is in a loading state. */
   loading?: boolean;
+  /** Callback when a contact is clicked. */
   onContactClick?: (contact: Contact) => void;
+  /** Callback when the email button is clicked for a contact. */
   onSendEmail?: (contactId: number) => void;
+  /** Callback when the SMS button is clicked for a contact. */
   onSendSMS?: (contactId: number) => void;
+  /** Callback when the more info button is clicked for a contact. */
   onMoreInfo?: (contactId: number) => void;
+  /** Callback when the edit button is clicked for a contact. */
   onEdit?: (contactId: number) => void;
 }
+
+/** Color mapping for lead classification badges. */
 const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'purple' | 'green' | 'red'> = {
   'New': 'blue',
   'Contacted': 'yellow',
@@ -24,10 +34,32 @@ const leadClassColors: Record<string, 'gray' | 'blue' | 'yellow' | 'orange' | 'p
   'Dying': 'red',
 };
 
+/**
+ * List component for displaying contacts with filtering and actions.
+ *
+ * This component renders a grid of contact cards with search and filter
+ * capabilities. Each contact card displays key information and provides
+ * action buttons for email, SMS, edit, and more info operations.
+ *
+ * @example
+ * ```tsx
+ * <ContactList
+ *   contacts={contacts}
+ *   onSendEmail={(id) => openEmailModal(id)}
+ *   onSendSMS={(id) => openSMSModal(id)}
+ * />
+ * ```
+ */
 export function ContactList({ contacts, loading, onContactClick, onSendEmail, onSendSMS, onMoreInfo, onEdit }: ContactListProps) {
+  /** Search term for filtering contacts. */
   const [searchTerm, setSearchTerm] = useState('');
+  /** Selected lead class filter. Empty string means no filter. */
   const [filterClass, setFilterClass] = useState<string>('');
 
+  /**
+   * Filtered contacts based on search term and lead class.
+   * Matches against name, email, and company fields.
+   */
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch =
       contact.Full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

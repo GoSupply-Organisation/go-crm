@@ -4,10 +4,7 @@ from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
-# import weaviate
 
-# ── WEAVIATE CONFIG ───────────────────────────────────
-# weaviate_client = weaviate.connect_to_local()
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 client = AsyncOpenAI(
@@ -179,26 +176,28 @@ async def run_pipeline(search_query: str):
     print(json.dumps(reliability_output, indent=2))
 
     for r_item in reliability_output['rankings']:
-        score = r_item['score']
+        r_score = r_item['score']
         url = r_item['url']
         verification = r_item['verification_method']
-
-        print(f"Found Score: {score} for URL: {url} (Verification: {verification})")
+        print(f"R Score: {r_score} for URL: {url} (Verification: {verification})")
 
     print("\n" + "="*60)
     print("⚡ STAGE 2: Urgency Agent")
     print("="*60)
     urgency_output = await urgency_agent(reliability_output)
     print(json.dumps(urgency_output, indent=2)) 
-
     for u_item in urgency_output:
         u_score = u_item['urgency_score']
-        indicators = u_item['top_urgency_indicators']
-        summary = u_item['summary']
-        print(f"Urgency Score: {u_score} (Top Indicators: {indicators})")
-        print(f"Summary: {summary}")
+        title = u_item['title']
+        url = u_item['url']
 
+        print(f"U Score: {u_score}, Title: {title}, URL: {url}")
+
+        total = float(r_score) * float(u_score)
+
+        print(f"Total Score: {total}")
     return {
+        "total_score": total,
         "search_query": search_query,
         "reliability": reliability_output,
         "urgency": urgency_output

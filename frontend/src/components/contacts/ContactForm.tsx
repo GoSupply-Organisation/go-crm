@@ -7,13 +7,19 @@ import { Textarea } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 
+/** Props interface for the ContactForm component. */
 interface ContactFormProps {
+  /** Optional initial data to populate the form. */
   initialData?: Partial<ContactFormData>;
+  /** Callback function called when the form is submitted with valid data. */
   onSubmit: (data: ContactFormData) => Promise<void>;
+  /** Optional callback function called when the cancel button is clicked. */
   onCancel?: () => void;
+  /** Label for the submit button. Defaults to 'Submit'. */
   submitLabel?: string;
 }
 
+/** Available lead classification options for the dropdown. */
 const leadClassOptions = [
   { value: 'New', label: 'New' },
   { value: 'Contacted', label: 'Contacted' },
@@ -24,12 +30,29 @@ const leadClassOptions = [
   { value: 'Dying', label: 'Dying' },
 ];
 
+/**
+ * Form component for creating and editing contacts.
+ *
+ * This component provides a comprehensive form for contact data including name,
+ * email, phone, company, lead classification, address, and notes. It handles
+ * form validation, error display, and loading states during submission.
+ *
+ * @example
+ * ```tsx
+ * <ContactForm
+ *   onSubmit={handleSubmit}
+ *   onCancel={() => setShowForm(false)}
+ *   submitLabel="Create Contact"
+ * />
+ * ```
+ */
 export function ContactForm({
   initialData,
   onSubmit,
   onCancel,
   submitLabel = 'Submit',
 }: ContactFormProps) {
+  /** Current form data state. */
   const [formData, setFormData] = useState<ContactFormData>({
     Full_name: initialData?.Full_name || '',
     email: initialData?.email || '',
@@ -40,9 +63,16 @@ export function ContactForm({
     address: initialData?.address || '',
   });
 
+  /** Validation error messages for each form field. */
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /** Loading state during form submission. */
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Validates the form data.
+   *
+   * @returns True if form is valid, false otherwise.
+   */
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -59,6 +89,14 @@ export function ContactForm({
     return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Handles form submission.
+   *
+   * Validates the form, sets loading state, and calls the onSubmit callback.
+   * If validation fails, submission is prevented.
+   *
+   * @param e - The form submission event.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -74,6 +112,15 @@ export function ContactForm({
     }
   };
 
+  /**
+   * Creates a change handler for a specific form field.
+   *
+   * Updates the form data state and clears any validation errors for the
+   * changed field.
+   *
+   * @param field - The key of the form field to update.
+   * @returns A change event handler function.
+   */
   const handleChange = (field: keyof ContactFormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {

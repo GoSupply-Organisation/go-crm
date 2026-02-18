@@ -6,21 +6,52 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
+/** Props interface for the TodoList component. */
 interface TodoListProps {
+  /** Array of todos to display. */
   todos: Todo[];
+  /** Callback when a todo's completion status is toggled. */
   onToggle: (id: number, completed: boolean) => void;
+  /** Callback when a todo is deleted. */
   onDelete: (id: number) => void;
 }
 
+/** Filter options for displaying todos. */
+type TodoFilter = 'all' | 'active' | 'completed';
+
+/** Color mapping for priority badges. */
 const priorityColors: Record<string, 'gray' | 'blue' | 'red'> = {
   'low': 'gray',
   'medium': 'blue',
   'high': 'red',
 };
 
+/**
+ * List component for displaying and managing todos.
+ *
+ * This component renders a list of todo items with filtering capabilities
+ * (all/active/completed). Each todo displays title, description,
+ * priority, and date, with options to toggle completion or delete.
+ *
+ * @example
+ * ```tsx
+ * <TodoList
+ *   todos={todos}
+ *   onToggle={(id, completed) => toggleTodo(id, completed)}
+ *   onDelete={(id) => deleteTodo(id)}
+ * />
+ * ```
+ */
 export function TodoList({ todos, onToggle, onDelete }: TodoListProps) {
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  /** Current filter state for todos. */
+  const [filter, setFilter] = useState<TodoFilter>('all');
 
+  /**
+   * Filtered todos based on current filter selection.
+   * - 'all': Shows all todos
+   * - 'active': Shows only incomplete todos
+   * - 'completed': Shows only completed todos
+   */
   const filteredTodos = todos.filter((todo) => {
     if (filter === 'active') return !todo.completed;
     if (filter === 'completed') return todo.completed;
