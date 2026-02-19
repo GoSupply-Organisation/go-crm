@@ -8,7 +8,7 @@ from weaviate.classes.query import Sort
 from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
+from .prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 # client = AsyncOpenAI(
@@ -83,8 +83,9 @@ async def reliability_agent(search_query: str, recent_context) -> dict:
                     model="glm-4.7-flash",
                     tools=openai_tools,
                     messages=messages,
-                    temperature=0.1,
-                    max_tokens=2000,
+                    temperature=0.7,
+                    max_tokens=16000,
+                    frequency_penalty=0.5,
                 )
 
                 message = response.choices[0].message
@@ -131,9 +132,10 @@ async def urgency_agent(reliability_data: dict) -> list:
                 response = await client.chat.completions.create(
                     model="glm-4.7-flash",
                     messages=messages,
-                    temperature=0.1,
-                    max_tokens=2000,
-                    tools=openai_tools
+                    temperature=0.7,
+                    max_tokens=16000,
+                    tools=openai_tools,
+                    frequency_penalty=0.5,
                 )
 
                 message = response.choices[0].message
@@ -160,7 +162,7 @@ async def urgency_agent(reliability_data: dict) -> list:
                     except json.JSONDecodeError:
                         return [{"raw_response": message.content}]
 
-def load_weivate_client():
+def load_weaviate_client():
     """
     Initializes and returns a Weaviate client connected to the local instance.
     """
@@ -180,7 +182,7 @@ def get_recent_context(limit: int = 5) -> str:
     client = None
     try:
         # 1. Connect to local Weaviate
-        client = load_weivate_client()
+        client = load_weaviate_client()
         
         collection = client.collections.get("Question")
         
@@ -188,7 +190,7 @@ def get_recent_context(limit: int = 5) -> str:
         # NOTE: This requires your 'date' property to be in a valid date format.
         response = collection.query.fetch_objects(
             limit=limit,
-            sort=Sort.by_property("date", descending=True),
+            sort=Sort.by_property("date", descending=False),
             return_properties=["title", "url", "snippet", "date", "total_score", "urgency_score", "reliability_score"]
         )
         
@@ -227,7 +229,7 @@ def save_to_weaviate(reliability_output: dict, urgency_output: list):
     print("\n💾 Saving to Weaviate...")
     
     # 1. Connect to local Docker instance
-    db_client = load_weivate_client()
+    db_client = load_weaviate_client()
 
     try:
         # 2. Define Collection Name
