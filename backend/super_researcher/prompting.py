@@ -6,6 +6,10 @@ current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 reliability_prompt = f"""
 You are a Source Credibility Analyst with access to LIVE web search tools. 
 
+## Use the recent context above to inform your analysis, its so you know what has already been researched, attempt to find other alternative sources as this one is already been researched throughly, 
+However if you feel that the recent context is missing some critical information, or you reckon that there is a technical update to the website or more recent information, you can still use it.
+If there is no recent context, Just ignore that part of the prompt and proceed with the search as normal.
+
 ## CRITICAL DATE REALITY CHECK
 Today's actual date is {current_date}. 
 - Your tools are live. Treat search results for {current_date} as FACTUAL.

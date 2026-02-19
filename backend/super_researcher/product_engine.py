@@ -4,6 +4,7 @@ import json
 import weaviate
 from weaviate.classes.config import Configure
 from weaviate.util import generate_uuid5
+from weaviate.classes.query import Sort 
 from openai import AsyncOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -11,13 +12,13 @@ from prompting import reliability_prompt, urgency_prompt, search_system_prompt, 
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 # client = AsyncOpenAI(
-    # base_url="http://127.0.0.1:8081/v1",
-    # api_key="sk-no-key-required",
+#     base_url="http://127.0.0.1:8081/v1",
+#     api_key="sk-no-key-required",
 # )
 
 # embed = AsyncOpenAI(
-    # base_url="http://127.0.0.1:8082/v1",
-    # api_key="sk-no-key-required",
+#     base_url="http://127.0.0.1:8082/v1",
+#     api_key="sk-no-key-required",
 # )
 
 client = AsyncOpenAI(
@@ -64,7 +65,7 @@ async def get_openai_tools(session: ClientSession):
     ]
 
 # ── RELIABILITY AGENT ──────────────────────────────
-async def reliability_agent(search_query: str) -> dict:
+async def reliability_agent(search_query: str, recent_context) -> dict:
     """
     Intakes search query -> searches web -> returns reliability rankings.
     """
@@ -72,15 +73,14 @@ async def reliability_agent(search_query: str) -> dict:
         async with ClientSession(read, write) as session:
             await session.initialize()
             openai_tools = await get_openai_tools(session)
-            
             messages = [
-                {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}"},
+                {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}\n\n{recent_context}"},
                 {"role": "user", "content": search_query}
             ]
 
             while True:
                 response = await client.chat.completions.create(
-                    model="glm-5",
+                    model="glm-4.7-flash",
                     tools=openai_tools,
                     messages=messages,
                     temperature=0.1,
@@ -129,7 +129,7 @@ async def urgency_agent(reliability_data: dict) -> list:
 
             while True:
                 response = await client.chat.completions.create(
-                    model="glm-5",
+                    model="glm-4.7-flash",
                     messages=messages,
                     temperature=0.1,
                     max_tokens=2000,
@@ -160,6 +160,65 @@ async def urgency_agent(reliability_data: dict) -> list:
                     except json.JSONDecodeError:
                         return [{"raw_response": message.content}]
 
+def load_weivate_client():
+    """
+    Initializes and returns a Weaviate client connected to the local instance.
+    """
+    return weaviate.connect_to_local(
+        host="localhost",
+        port=8080,
+        headers={
+            "X-OpenAI-Api-Key": "sk-no-key-required"
+        }
+    )
+
+def get_recent_context(limit: int = 5) -> str:
+    """
+    Fetches the most recent results from Weaviate and formats them 
+    as a context string for an LLM prompt.
+    """
+    client = None
+    try:
+        # 1. Connect to local Weaviate
+        client = load_weivate_client()
+        
+        collection = client.collections.get("Question")
+        
+        # 2. Query: Fetch objects sorted by 'date' (newest first)
+        # NOTE: This requires your 'date' property to be in a valid date format.
+        response = collection.query.fetch_objects(
+            limit=limit,
+            sort=Sort.by_property("date", descending=True),
+            return_properties=["title", "url", "snippet", "date", "total_score", "urgency_score", "reliability_score"]
+        )
+        
+        # 3. Format the results for the LLM
+        if not response.objects:
+            return "No recent data found in the database."
+
+        # Build a clean text block
+        context_string = "Here are the most recent findings from the database:\n\n"
+        
+        for i, obj in enumerate(response.objects, 1):
+            props = obj.properties
+            context_string += (
+                f"--- Result {i} ---\n"
+                f"Title: {props.get('title', 'N/A')}\n"
+                f"Date: {props.get('date', 'N/A')}\n"
+                f"Scores: Urgency {props.get('urgency_score', 0)} | Reliability {props.get('reliability_score', 0)} | Total {props.get('total_score', 0)}\n"
+                f"Snippet: {props.get('snippet', 'N/A')}\n"
+                f"URL: {props.get('url', 'N/A')}\n\n"
+            )
+            
+        return context_string
+
+    except Exception as e:
+        return f"Error retrieving context from database: {e}"
+    
+    finally:
+        if client:
+            client.close()
+
 # ── WEAVIATE INTEGRATION ──────────────────────────────────
 def save_to_weaviate(reliability_output: dict, urgency_output: list):
     """
@@ -168,13 +227,7 @@ def save_to_weaviate(reliability_output: dict, urgency_output: list):
     print("\n💾 Saving to Weaviate...")
     
     # 1. Connect to local Docker instance
-    db_client = weaviate.connect_to_local(
-        host="localhost",
-        port=8080,
-        headers={
-            "X-OpenAI-Api-Key": "sk-no-key-required"  # Required by the vectorizer config
-        }
-    )
+    db_client = load_weivate_client()
 
     try:
         # 2. Define Collection Name
@@ -259,10 +312,15 @@ async def run_pipeline(search_query: str):
     """
     print("🔍 Initializing Pipeline...")
 
+    print("Getting most recent context from Weaviate...")
+    recent_context = get_recent_context()
+    print(recent_context[:50] + "...\n")  # Print a snippet of the context
+
+
     print("\n" + "="*60)
     print("📊 STAGE 1: Reliability Agent")
     print("="*60)
-    reliability_output = await reliability_agent(search_query)
+    reliability_output = await reliability_agent(search_query, recent_context)
     print(json.dumps(reliability_output, indent=2))
 
     print("\n" + "="*60)
