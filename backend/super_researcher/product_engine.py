@@ -1,26 +1,15 @@
 from decouple import config
 import asyncio
 import json
+import requests
 import weaviate
 from weaviate.classes.config import Configure
 from weaviate.util import generate_uuid5
 from weaviate.classes.query import Sort 
 from openai import AsyncOpenAI
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from .prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
+from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
-# client = AsyncOpenAI(
-#     base_url="http://127.0.0.1:8081/v1",
-#     api_key="sk-no-key-required",
-# )
-
-# embed = AsyncOpenAI(
-#     base_url="http://127.0.0.1:8082/v1",
-#     api_key="sk-no-key-required",
-# )
-
 client = AsyncOpenAI(
     base_url=config("GLM_BASE_URL"),
     api_key=config("GLM_API_KEY"),
@@ -30,11 +19,57 @@ embed = AsyncOpenAI(
     api_key=config("OPENAI_API_KEY"),
 )
 
-# ── MCP SERVER CONFIG ──────────────────────────────────
-MCP_PARAMS = StdioServerParameters(
-    command="uvx",
-    args=["--python", ">=3.10,<3.14", "duckduckgo-mcp", "serve"],
-)
+# client = AsyncOpenAI(
+#     base_url="",
+#     api_key="",)
+
+# embed = AsyncOpenAI(
+#     base_url="",
+#     api_key="",
+#     )
+
+# ── SERPER CONFIG ──────────────────────────────────────
+SERPER_API_KEY = config("SERPER_API_KEY")
+
+# ── TOOL DEFINITIONS ───────────────────────────────────
+def google_search(query):
+    """
+    Performs a Google search using the Serper API.
+    """
+    url = "https://google.serper.dev/search"
+    payload = json.dumps({"q": query})
+    headers = {
+        'X-API-KEY': SERPER_API_KEY,
+        'Content-Type': 'application/json'
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, data=payload)
+        response.raise_for_status()
+        return response.text
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+# Schema for the LLM to understand the tool
+OPENAI_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "google_search",
+            "description": "Search Google for real-time information, current events, or specific data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to look up on Google",
+                    }
+                },
+                "required": ["query"],
+            },
+        },
+    }
+]
 
 # ── EMBEDDING FUNCTION ──────────────────────────────────────
 def get_embedding(text):
@@ -48,68 +83,62 @@ def get_embedding(text):
         print(f"Error generating embedding: {e}")
         return None
 
-# ── HELPER: CONVERT MCP TOOLS TO OPENAI ───────────────────
-async def get_openai_tools(session: ClientSession):
-    """Fetches tools from the active MCP session and converts schema."""
-    mcp_tools = await session.list_tools()
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.inputSchema,
-            }
-        }
-        for tool in mcp_tools.tools
-    ]
-
 # ── RELIABILITY AGENT ──────────────────────────────
 async def reliability_agent(search_query: str, recent_context) -> dict:
     """
     Intakes search query -> searches web -> returns reliability rankings.
     """
-    async with stdio_client(MCP_PARAMS) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            openai_tools = await get_openai_tools(session)
-            messages = [
-                {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}\n\n{recent_context}"},
-                {"role": "user", "content": search_query}
-            ]
+    messages = [
+        {"role": "system", "content": f"{search_system_prompt}\n\n{reliability_prompt}\n\n{recent_context}"},
+        {"role": "user", "content": search_query}
+    ]
 
-            while True:
-                response = await client.chat.completions.create(
-                    model="glm-4.7-flash",
-                    tools=openai_tools,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=16000,
-                    frequency_penalty=0.5,
-                )
+    max_tool_calls = 12
+    tool_call_count = 0
 
-                message = response.choices[0].message
+    while tool_call_count < max_tool_calls:
+        response = await client.chat.completions.create(
+            model="glm-4.7-flash",
+            tools=OPENAI_TOOLS,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=16000,
+            frequency_penalty=0.5,
+        )
+
+        message = response.choices[0].message
+
+        if message.tool_calls:
+            messages.append(message)
+            for tool_call in message.tool_calls:
+                print(f"🔧 Calling Tool: {tool_call.function.name}")
                 
-                if message.tool_calls:
-                    messages.append(message)
-                    for tool_call in message.tool_calls:
-                        print(f"🔧 Calling Tool: {tool_call.function.name}")
-                        result = await session.call_tool(
-                            tool_call.function.name, 
-                            arguments=json.loads(tool_call.function.arguments)
-                        )
-                        tool_content = result.content[0].text if result.content else ""
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": tool_content
-                        })
-                    continue 
+                # Execute the tool locally
+                if tool_call.function.name == "google_search":
+                    args = json.loads(tool_call.function.arguments)
+                    tool_content = google_search(args["query"])
                 else:
-                    try:
-                        return json.loads(message.content)
-                    except json.JSONDecodeError:
-                        return {"raw_response": message.content}
+                    tool_content = "Error: Unknown tool"
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_content
+                })
+            
+            tool_call_count += 1
+            continue
+        else:
+            try:
+                return json.loads(message.content)
+            except json.JSONDecodeError:
+                return {"raw_response": message.content}
+
+    print(f"⚠️  Reached maximum tool calls ({max_tool_calls}). Returning current results.")
+    try:
+        return json.loads(message.content)
+    except json.JSONDecodeError:
+        return {"rankings": [], "error": f"Max tool calls ({max_tool_calls}) reached without valid response"}
 
 # ── URGENCY AGENT ──────────────────────────────────
 async def urgency_agent(reliability_data: dict) -> list:
@@ -118,49 +147,57 @@ async def urgency_agent(reliability_data: dict) -> list:
     """
     context = json.dumps(reliability_data, indent=2)
 
-    async with stdio_client(MCP_PARAMS) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            openai_tools = await get_openai_tools(session)
-            
-            messages = [
-                {"role": "system", "content": urgency_prompt},
-                {"role": "user", "content": f"Analyze the urgency of these findings:\n\n{context}"}
-            ]
+    messages = [
+        {"role": "system", "content": urgency_prompt},
+        {"role": "user", "content": f"Analyze the urgency of these findings:\n\n{context}"}
+    ]
 
-            while True:
-                response = await client.chat.completions.create(
-                    model="glm-4.7-flash",
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=16000,
-                    tools=openai_tools,
-                    frequency_penalty=0.5,
-                )
+    max_tool_calls = 12
+    tool_call_count = 0
 
-                message = response.choices[0].message
+    while tool_call_count < max_tool_calls:
+        response = await client.chat.completions.create(
+            model="glm-4.7-flash",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=16000,
+            tools=OPENAI_TOOLS,
+            frequency_penalty=0.5,
+        )
 
-                if message.tool_calls:
-                    messages.append(message)
-                    for tool_call in message.tool_calls:
-                        print(f"🔧 Calling Tool: {tool_call.function.name}")
-                        result = await session.call_tool(
-                            tool_call.function.name, 
-                            arguments=json.loads(tool_call.function.arguments)
-                        )
-                        tool_content = result.content[0].text if result.content else ""
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": tool_content
-                        })
-                    continue
+        message = response.choices[0].message
+
+        if message.tool_calls:
+            messages.append(message)
+            for tool_call in message.tool_calls:
+                print(f"🔧 Calling Tool: {tool_call.function.name}")
+                
+                # Execute the tool locally
+                if tool_call.function.name == "google_search":
+                    args = json.loads(tool_call.function.arguments)
+                    tool_content = google_search(args["query"])
                 else:
-                    try:
-                        # Expecting a list of items
-                        return json.loads(message.content)
-                    except json.JSONDecodeError:
-                        return [{"raw_response": message.content}]
+                    tool_content = "Error: Unknown tool"
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_content
+                })
+            
+            tool_call_count += 1
+            continue
+        else:
+            try:
+                return json.loads(message.content)
+            except json.JSONDecodeError:
+                return [{"raw_response": message.content}]
+
+    print("⚠️  Reached maximum search iterations. Returning current results.")
+    try:
+        return json.loads(message.content)
+    except json.JSONDecodeError:
+        return [{"error": "Max iterations reached without valid response"}]
 
 def load_weaviate_client():
     """
@@ -181,24 +218,18 @@ def get_recent_context(limit: int = 5) -> str:
     """
     client = None
     try:
-        # 1. Connect to local Weaviate
         client = load_weaviate_client()
-        
         collection = client.collections.get("Question")
         
-        # 2. Query: Fetch objects sorted by 'date' (newest first)
-        # NOTE: This requires your 'date' property to be in a valid date format.
         response = collection.query.fetch_objects(
             limit=limit,
-            sort=Sort.by_property("date", descending=False),
+            sort=Sort.by_property("date", ascending=False),
             return_properties=["title", "url", "snippet", "date", "total_score", "urgency_score", "reliability_score"]
         )
         
-        # 3. Format the results for the LLM
         if not response.objects:
             return "No recent data found in the database."
 
-        # Build a clean text block
         context_string = "Here are the most recent findings from the database:\n\n"
         
         for i, obj in enumerate(response.objects, 1):
@@ -228,19 +259,14 @@ def save_to_weaviate(reliability_output: dict, urgency_output: list):
     """
     print("\n💾 Saving to Weaviate...")
     
-    # 1. Connect to local Docker instance
     db_client = load_weaviate_client()
 
     try:
-        # 2. Define Collection Name
         collection_name = "Question"
 
-        # 3. Clean slate (Optional: comment this out to keep existing data)
         if db_client.collections.exists(collection_name):
             db_client.collections.delete(collection_name)
 
-        # 4. Create Collection with Vectorizer
-        # Note: This points to your local embedding server via Docker internal URL
         questions = db_client.collections.create(
             name=collection_name,
             vector_config=Configure.Vectors.text2vec_openai(
@@ -249,26 +275,21 @@ def save_to_weaviate(reliability_output: dict, urgency_output: list):
             ),
         )
 
-        # 5. Prepare data map for easy lookup
-        # Map URL -> Reliability Score
         reliability_map = {
             r_item['url']: r_item['score'] 
             for r_item in reliability_output.get('rankings', [])
         }
 
-        # 6. Insert Data
         print(f"Loading {len(urgency_output)} items into Weaviate...")
         
         with questions.batch.dynamic() as batch:
             for item in urgency_output:
                 url = item.get("url")
                 u_score = item.get("urgency_score", 0)
-                # Look up reliability score, default to 0 if not found
                 r_score = reliability_map.get(url, 0)
                 
                 total_score = float(r_score) * float(u_score)
 
-                # Generate deterministic UUID based on URL
                 object_id = generate_uuid5(url)
 
                 batch.add_object(
@@ -292,7 +313,6 @@ def save_to_weaviate(reliability_output: dict, urgency_output: list):
 
         print(f"✅ Successfully inserted {len(urgency_output)} objects.")
 
-        # 7. Verify (Optional)
         response = questions.query.near_text(query="stock market", limit=2)
         print("\n🔎 Verification Query Results:")
         for obj in response.objects:
@@ -316,8 +336,10 @@ async def run_pipeline(search_query: str):
 
     print("Getting most recent context from Weaviate...")
     recent_context = get_recent_context()
-    print(recent_context[:50] + "...\n")  # Print a snippet of the context
-
+    if recent_context and "No recent data" not in recent_context:
+        print(recent_context[:100] + "...\n")
+    else:
+        print("No recent context found, starting fresh search.\n")
 
     print("\n" + "="*60)
     print("📊 STAGE 1: Reliability Agent")
@@ -331,13 +353,11 @@ async def run_pipeline(search_query: str):
     urgency_output = await urgency_agent(reliability_output)
     print(json.dumps(urgency_output, indent=2)) 
 
-    # ── SAVE TO WEAVIATE ─────────────────────────────
     if urgency_output:
         save_to_weaviate(reliability_output, urgency_output)
     else:
         print("No urgency data to save.")
 
-    # Return final aggregated data
     return {
         "search_query": search_query,
         "reliability": reliability_output,
