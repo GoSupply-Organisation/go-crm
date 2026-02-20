@@ -8,7 +8,8 @@ from weaviate.util import generate_uuid5
 from weaviate.classes.query import Sort 
 from openai import AsyncOpenAI
 from prompting import reliability_prompt, urgency_prompt, search_system_prompt, question
-
+# TODO: Issue with the saving to weivate database. 
+# TODO: Add more information to the google searches its too vague. 
 # ── YOUR INFERENCE ENGINE ──────────────────────────────
 client = AsyncOpenAI(
     base_url=config("GLM_BASE_URL"),
@@ -98,12 +99,11 @@ async def reliability_agent(search_query: str, recent_context) -> dict:
 
     while tool_call_count < max_tool_calls:
         response = await client.chat.completions.create(
-            model="glm-4.7-flash",
+            model="glm-5",
             tools=OPENAI_TOOLS,
             messages=messages,
-            temperature=0.7,
+            temperature=1.0,
             max_tokens=16000,
-            frequency_penalty=0.5,
         )
 
         message = response.choices[0].message
@@ -157,12 +157,11 @@ async def urgency_agent(reliability_data: dict) -> list:
 
     while tool_call_count < max_tool_calls:
         response = await client.chat.completions.create(
-            model="glm-4.7-flash",
+            model="glm-5",
             messages=messages,
-            temperature=0.7,
+            temperature=1.0,
             max_tokens=16000,
             tools=OPENAI_TOOLS,
-            frequency_penalty=0.5,
         )
 
         message = response.choices[0].message
