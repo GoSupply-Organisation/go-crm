@@ -119,7 +119,7 @@ The CRM uses a comprehensive lead classification system:
 
 ```bash
 cd backend
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
@@ -128,8 +128,8 @@ python manage.py runserver
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ### Environment Variables
