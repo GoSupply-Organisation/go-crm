@@ -14,7 +14,7 @@ Go CRM is a full-stack application designed to manage contacts, tasks, communica
 - **Language**: Python
 - **Database**: PostgreSQL (configurable)
 - **Task Queue**: Celery for async processing
-- **AI Integration**: OpenAI GPT for lead generation and research
+- **AI Integration**: Uses GLM-5 for Inference and OpenAIs Text-Embedding-3
 - **Vector Database**: Weaviate for research storage
 - **Communication**: Django Email, SMS API
 
