@@ -68,6 +68,16 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
+# Celery Configuration (Production)
+# Redis URLs with proper format
+REDIS_HOST = config('REDIS_HOST', default='redis://redis:6379/0')
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=REDIS_HOST)
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/1')
+CELERY_TASK_ALWAYS_EAGER = False  # Ensure async execution
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
 # Azure Blob Storage Configuration
 AZURE_ACCOUNT_NAME = config('AZURE_ACCOUNT_NAME')
 AZURE_ACCOUNT_KEY = config('AZURE_KEY')

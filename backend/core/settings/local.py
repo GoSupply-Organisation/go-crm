@@ -15,12 +15,15 @@ ALLOWED_HOSTS = ["*"]
 INTERNAL_IPS = [
     "127.0.0.1",
     "localhost",
+    "192.168.65.1",  # Docker Desktop on macOS
+    "172.17.0.1",  # Docker bridge network
+    "0.0.0.0",  # All interfaces
 ]
 
-# Development Middleware
-MIDDLEWARE = [
+# Development Middleware - debug toolbar should come AFTER all other middleware
+MIDDLEWARE += [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
-] + MIDDLEWARE
+]
 
 # Development Apps
 INSTALLED_APPS += [
@@ -54,8 +57,8 @@ DATABASES = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Celery Configuration (Local)
-# Execute tasks synchronously for easier debugging
-CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', default=True, cast=bool)
+# Set to True to execute tasks synchronously for debugging
+CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', default=False, cast=bool)
 CELERY_INCLUDE_BUILTINS = True
 CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
